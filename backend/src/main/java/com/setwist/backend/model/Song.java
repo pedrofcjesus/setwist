@@ -17,7 +17,7 @@ public class Song {
 
     private String title;
     private String artist;
-    private String key;
+    private String songKey;
     private Integer durationSeconds;
 
     // Construtor vazio
@@ -25,10 +25,10 @@ public class Song {
     }
 
     // Construtor
-    public Song(String title, String artist, String key, Integer durationSeconds) {
+    public Song(String title, String artist, String songKey, Integer durationSeconds) {
         this.title = title;
         this.artist = artist;
-        this.key = key;
+        this.songKey = songKey;
         this.durationSeconds = durationSeconds;
     }
 
@@ -57,12 +57,12 @@ public class Song {
         this.artist = artist;
     }
 
-    public String getKey() {
-        return key;
+    public String getSongKey() {
+        return songKey;
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    public void setSongKey(String songKey) {
+        this.songKey = songKey;
     }
 
     public Integer getDurationSeconds() {
