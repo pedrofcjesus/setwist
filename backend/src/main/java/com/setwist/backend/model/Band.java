@@ -7,6 +7,8 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,20 +16,20 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 
 @Entity
-@Table(name = "setlists")
-public class Setlist {
+@Table(name = "bands")
+
+public class Band {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
+
     private String description;
 
     @CreationTimestamp
@@ -37,44 +39,27 @@ public class Setlist {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Relação entre Song e Setlist
-    @OneToMany(mappedBy = "setlist", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC")
+    // Uma banda - várias músicas
+    @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Song> songs = new ArrayList<>();
 
-    private List<SetlistSong> setlistSongs = new ArrayList<>();
-
-    @ManyToOne
-    @JoinColumn(name = "band_id")
-    private Band band;
+    // Uma banda - várias setlists
+    @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Setlist> setlists = new ArrayList<>();
 
     // Construtor vazio
-    public Setlist() {
-
+    public Band() {
     }
 
-    // Construtor com parâmetros
-    public Setlist(String name, String description) {
+    // Construtor
+    public Band(String name, String description) {
         this.name = name;
         this.description = description;
     }
 
-    // Calculo dinâmico
-    public Integer getTotalSongs() {
-        return setlistSongs != null ? setlistSongs.size() : 0;
-    }
-
-    public Integer getTotalDurationSeconds() {
-        if (setlistSongs == null || setlistSongs.isEmpty()) {
-            return 0;
-        }
-        return setlistSongs.stream()
-                .mapToInt(item -> (item.getSong() != null && item.getSong().getDurationSeconds() != null)
-                        ? item.getSong().getDurationSeconds()
-                        : 0)
-                .sum();
-    }
-
-    // Getters e Setters
+    // Getters & Setters
     public Long getId() {
         return id;
     }
@@ -107,7 +92,7 @@ public class Setlist {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public LocalDateTime getUdatedAt() {
         return updatedAt;
     }
 
@@ -115,19 +100,20 @@ public class Setlist {
         this.updatedAt = updatedAt;
     }
 
-    public List<SetlistSong> getSetlistSongs() {
-        return setlistSongs;
+    public List<Song> getSongs() {
+        return songs;
     }
 
-    public void setSetlistSongs(List<SetlistSong> setlistSongs) {
-        this.setlistSongs = setlistSongs;
+    public void setSongs(List<Song> songs) {
+        this.songs = songs;
     }
 
-    public Band getBand() {
-        return band;
+    public List<Setlist> getSetlists() {
+        return setlists;
     }
 
-    public void setBand(Band band) {
-        this.band = band;
+    public void setSetlists(List<Setlist> setlists) {
+        this.setlists = setlists;
     }
+
 }
