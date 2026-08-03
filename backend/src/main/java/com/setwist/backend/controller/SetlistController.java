@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.model.Setlist;
 import com.setwist.backend.model.Song;
+import com.setwist.backend.model.SetlistSong;
 import com.setwist.backend.repository.SetlistRepository;
 import com.setwist.backend.repository.SongRepository;
 
@@ -74,7 +75,8 @@ public class SetlistController {
 
     // GESTÂO DE MÚSICAS
 
-    // 6. ADICIONAR MÚSICA À SETLIST
+    // 6. ADICIONAR MÚSICA À SETLIST (com posição automatica no fim do alinhamento)
+    // POST /api/setlist/1/songs/2
     @PostMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<Setlist> addSongToSetlist(@PathVariable Long setlistId, @PathVariable Long songId) {
         Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
@@ -84,10 +86,13 @@ public class SetlistController {
             return ResponseEntity.notFound().build();
         }
 
-        if (!setlist.getSongs().contains(song)) {
-            setlist.getSongs().add(song);
-            setlistRepository.save(setlist);
-        }
+        // posição = número atual + 1
+        int nextPosition = setlist.getSetlistSongs().size() + 1;
+
+        SetlistSong setlistSong = new SetlistSong(setlist, song, nextPosition);
+        setlist.getSetlistSongs().add(setlistSong);
+
+        setlistRepository.save(setlist);
 
         return ResponseEntity.ok(setlist);
     }
@@ -96,13 +101,22 @@ public class SetlistController {
     @DeleteMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<Setlist> removeSongFromSetlist(@PathVariable Long setlistId, @PathVariable Long songId) {
         Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
-        Song song = songRepository.findById(songId).orElse(null);
 
-        if (setlist == null || song == null) {
+        if (setlist == null) {
             return ResponseEntity.notFound().build();
         }
-        setlist.getSongs().remove(song);
-        setlistRepository.save(setlist);
+
+        // Remove o elemento da lista
+        boolean removed = setlist.getSetlistSongs().removeIf(item -> item.getSong().getId().equals(songId));
+
+        if (removed) {
+            // Reajusta as posições das músicas restantes
+            int pos = 1;
+            for (SetlistSong item : setlist.getSetlistSongs()) {
+                item.setPosition(pos++);
+            }
+            setlistRepository.save(setlist);
+        }
 
         return ResponseEntity.ok(setlist);
     }
