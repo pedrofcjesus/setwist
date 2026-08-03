@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.model.Song;
+import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SongRepository;
 
 @RestController
@@ -20,12 +21,13 @@ import com.setwist.backend.repository.SongRepository;
 
 public class SongController {
 
-    // Variável que guarda o repository
     private final SongRepository songRepository;
+    private final BandRepository bandRepository;
 
     // Construtor
-    public SongController(SongRepository songRepository) {
+    public SongController(SongRepository songRepository, BandRepository bandRepository) {
         this.songRepository = songRepository;
+        this.bandRepository = bandRepository;
     }
 
     // 1. READ ALL (Listar todas as músicas)
@@ -34,21 +36,33 @@ public class SongController {
         return songRepository.findAll();
     }
 
-    // 2. READ ONE (Listar uma música por ID)
+    // 2. READ BY BAND (Listar músicas por banda)
+    @GetMapping("/band/{bandId}")
+    public List<Song> getSongsByBand(@PathVariable Long bandId) {
+        return songRepository.findByBandId(bandId);
+    }
+
+    // 3. READ ONE (Listar uma música por ID)
     @GetMapping("/{id}")
     public ResponseEntity<Song> getSongById(@PathVariable Long id) {
         return songRepository.findById(id)
-                .map(song -> ResponseEntity.ok(song))
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. CREATE (Adicionar músicas)
-    @PostMapping
-    public Song createSong(@RequestBody Song song) {
-        return songRepository.save(song);
+    // 4. CREATE (Adicionar músicas)
+    @PostMapping("/band/{bandId}")
+    public ResponseEntity<Song> createSongForBand(@PathVariable Long bandId, @RequestBody Song song) {
+        return bandRepository.findById(bandId)
+                .map(band -> {
+                    song.setBand(band);
+                    Song savedSong = songRepository.save(song);
+                    return ResponseEntity.ok(savedSong);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. UPDATE (Editar música existente)
+    // 5. UPDATE (Editar música existente)
     @PutMapping("/{id}")
     public ResponseEntity<Song> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
         return songRepository.findById(id)
@@ -63,7 +77,7 @@ public class SongController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. DELETE - Apagar uma música
+    // 6. DELETE - Apagar uma música
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSong(@PathVariable Long id) {
         if (songRepository.existsById(id)) {
