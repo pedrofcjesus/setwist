@@ -7,15 +7,14 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -37,10 +36,10 @@ public class Setlist {
     private LocalDateTime updatedAt;
 
     // Relação entre Song e Setlist
-    @ManyToMany
-    @JoinTable(name = "setlist_songs", joinColumns = @JoinColumn(name = "setlist_id"), inverseJoinColumns = @JoinColumn(name = "song_id"))
+    @OneToMany(mappedBy = "setlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
 
-    private List<Song> songs = new ArrayList<>();
+    private List<SetlistSong> setlistSongs = new ArrayList<>();
 
     // Construtor vazio
     public Setlist() {
@@ -55,19 +54,21 @@ public class Setlist {
 
     // Calculo dinâmico
     public Integer getTotalSongs() {
-        return songs != null ? songs.size() : 0;
+        return setlistSongs != null ? setlistSongs.size() : 0;
     }
 
     public Integer getTotalDurationSeconds() {
-        if (songs == null || songs.isEmpty()) {
+        if (setlistSongs == null || setlistSongs.isEmpty()) {
             return 0;
         }
-        return songs.stream()
-                .mapToInt(song -> song.getDurationSeconds() != null ? song.getDurationSeconds() : 0)
+        return setlistSongs.stream()
+                .mapToInt(item -> (item.getSong() != null && item.getSong().getDurationSeconds() != null)
+                        ? item.getSong().getDurationSeconds()
+                        : 0)
                 .sum();
     }
 
-    // Getters e Setter
+    // Getters e Setters
     public Long getId() {
         return id;
     }
@@ -108,11 +109,11 @@ public class Setlist {
         this.updatedAt = updatedAt;
     }
 
-    public List<Song> getSongs() {
-        return songs;
+    public List<SetlistSong> getSetlistSongs() {
+        return setlistSongs;
     }
 
-    public void setSongs(List<Song> songs) {
-        this.songs = songs;
+    public void setSetlistSongs(List<SetlistSong> setlistSongs) {
+        this.setlistSongs = setlistSongs;
     }
 }
