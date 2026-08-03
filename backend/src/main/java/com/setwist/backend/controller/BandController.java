@@ -21,7 +21,7 @@ public class BandController {
 
     private final BandRepository bandRepository;
 
-    public BandController(BandRepository bandRepository, BandRepository bandRepository_1) {
+    public BandController(BandRepository bandRepository) {
         this.bandRepository = bandRepository;
     }
 

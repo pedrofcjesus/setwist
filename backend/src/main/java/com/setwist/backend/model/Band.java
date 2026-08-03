@@ -92,7 +92,7 @@ public class Band {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUdatedAt() {
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
