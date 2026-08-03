@@ -12,59 +12,64 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SongRepository;
 
 @RestController
 @RequestMapping("/api/songs")
-
 public class SongController {
 
     private final SongRepository songRepository;
     private final BandRepository bandRepository;
 
-    // Construtor
     public SongController(SongRepository songRepository, BandRepository bandRepository) {
         this.songRepository = songRepository;
         this.bandRepository = bandRepository;
     }
 
-    // 1. READ ALL (Listar todas as músicas)
+    // 1. READ ALL (Retorna DTOs de todas as músicas)
     @GetMapping
-    public List<Song> getAllSongs() {
-        return songRepository.findAll();
+    public List<SongResponseDTO> getAllSongs() {
+        return songRepository.findAll()
+                .stream()
+                .map(SongResponseDTO::new)
+                .toList();
     }
 
-    // 2. READ BY BAND (Listar músicas por banda)
+    // 2. READ BY BAND (Retorna DTOs das músicas de uma banda específica)
     @GetMapping("/band/{bandId}")
-    public List<Song> getSongsByBand(@PathVariable Long bandId) {
-        return songRepository.findByBandId(bandId);
+    public List<SongResponseDTO> getSongsByBand(@PathVariable Long bandId) {
+        return songRepository.findByBandId(bandId)
+                .stream()
+                .map(SongResponseDTO::new)
+                .toList();
     }
 
-    // 3. READ ONE (Listar uma música por ID)
+    // 3. READ ONE (Retorna DTO de uma música por ID)
     @GetMapping("/{id}")
-    public ResponseEntity<Song> getSongById(@PathVariable Long id) {
+    public ResponseEntity<SongResponseDTO> getSongById(@PathVariable Long id) {
         return songRepository.findById(id)
-                .map(ResponseEntity::ok)
+                .map(song -> ResponseEntity.ok(new SongResponseDTO(song)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. CREATE (Adicionar músicas)
+    // 4. CREATE FOR BAND (Cria a música e devolve em formato DTO)
     @PostMapping("/band/{bandId}")
-    public ResponseEntity<Song> createSongForBand(@PathVariable Long bandId, @RequestBody Song song) {
+    public ResponseEntity<SongResponseDTO> createSongForBand(@PathVariable Long bandId, @RequestBody Song song) {
         return bandRepository.findById(bandId)
                 .map(band -> {
                     song.setBand(band);
                     Song savedSong = songRepository.save(song);
-                    return ResponseEntity.ok(savedSong);
+                    return ResponseEntity.ok(new SongResponseDTO(savedSong));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. UPDATE (Editar música existente)
+    // 5. UPDATE (Edita a música e devolve em formato DTO)
     @PutMapping("/{id}")
-    public ResponseEntity<Song> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
+    public ResponseEntity<SongResponseDTO> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
         return songRepository.findById(id)
                 .map(song -> {
                     song.setTitle(songDetails.getTitle());
@@ -72,7 +77,7 @@ public class SongController {
                     song.setSongKey(songDetails.getSongKey());
                     song.setDurationSeconds(songDetails.getDurationSeconds());
                     Song updatedSong = songRepository.save(song);
-                    return ResponseEntity.ok(updatedSong);
+                    return ResponseEntity.ok(new SongResponseDTO(updatedSong));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

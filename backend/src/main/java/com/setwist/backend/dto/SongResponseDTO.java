@@ -1,44 +1,31 @@
-package com.setwist.backend.model;
+package com.setwist.backend.dto;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import com.setwist.backend.model.Song;
 
-@Entity
-@Table(name = "songs")
-
-public class Song {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class SongResponseDTO {
     private Long id;
-
-    @ManyToOne
-    @JoinColumn(name = "band_id")
-    private Band band;
-
     private String title;
     private String artist;
     private String songKey;
     private Integer durationSeconds;
+    private BandSummaryDTO band;
 
-    // Construtor vazio
-    public Song() {
+    public SongResponseDTO() {
     }
 
-    // Construtor
-    public Song(String title, String artist, String songKey, Integer durationSeconds) {
-        this.title = title;
-        this.artist = artist;
-        this.songKey = songKey;
-        this.durationSeconds = durationSeconds;
+    public SongResponseDTO(Song song) {
+        this.id = song.getId();
+        this.title = song.getTitle();
+        this.artist = song.getArtist();
+        this.songKey = song.getSongKey();
+        this.durationSeconds = song.getDurationSeconds();
+
+        if (song.getBand() != null) {
+            this.band = new BandSummaryDTO(song.getBand().getId(), song.getBand().getName());
+        }
     }
 
-    // Getters & Setters
+    // Getters e Setters
     public Long getId() {
         return id;
     }
@@ -79,12 +66,11 @@ public class Song {
         this.durationSeconds = durationSeconds;
     }
 
-    public Band getBand() {
+    public BandSummaryDTO getBand() {
         return band;
     }
 
-    public void setBand(Band band) {
+    public void setBand(BandSummaryDTO band) {
         this.band = band;
     }
-
 }
