@@ -19,12 +19,10 @@ import com.setwist.backend.repository.BandRepository;
 @RequestMapping("/api/bands")
 public class BandController {
 
-    private final BandRepository bandRepository_1;
     private final BandRepository bandRepository;
 
     public BandController(BandRepository bandRepository, BandRepository bandRepository_1) {
         this.bandRepository = bandRepository;
-        this.bandRepository_1 = bandRepository_1;
     }
 
     // 1. READ ALL - Listar todas as bandas
