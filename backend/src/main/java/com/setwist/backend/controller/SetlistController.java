@@ -22,15 +22,12 @@ import com.setwist.backend.repository.SongRepository;
 @RequestMapping("/api/setlists")
 public class SetlistController {
 
-    private final SongController songController;
     private final SetlistRepository setlistRepository;
     private final SongRepository songRepository;
 
-    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository,
-            SongController songController) {
+    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository) {
         this.setlistRepository = setlistRepository;
         this.songRepository = songRepository;
-        this.songController = songController;
     }
 
     // 1. READ All - Listar todas as Setlists
