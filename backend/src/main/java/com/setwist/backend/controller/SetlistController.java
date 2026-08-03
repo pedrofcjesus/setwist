@@ -22,12 +22,15 @@ import com.setwist.backend.repository.SongRepository;
 @RequestMapping("/api/setlists")
 public class SetlistController {
 
+    private final SongController songController;
     private final SetlistRepository setlistRepository;
     private final SongRepository songRepository;
 
-    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository) {
+    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository,
+            SongController songController) {
         this.setlistRepository = setlistRepository;
         this.songRepository = songRepository;
+        this.songController = songController;
     }
 
     // 1. READ All - Listar todas as Setlists
@@ -120,4 +123,30 @@ public class SetlistController {
 
         return ResponseEntity.ok(setlist);
     }
+
+    // 8. REORDENAR músicas na setlist (para drag&drop)
+    @PutMapping("/{setlistId}/reorder")
+    public ResponseEntity<Setlist> reorderSetlist(
+            @PathVariable Long setlistId,
+            @RequestBody List<Long> newSongOrderIds) {
+
+        Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
+
+        if (setlist == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        for (com.setwist.backend.model.SetlistSong setlistSong : setlist.getSetlistSongs()) {
+            int newIndex = newSongOrderIds.indexOf(setlistSong.getSong().getId());
+
+            if (newIndex != -1) {
+                setlistSong.setPosition(newIndex + 1);
+            }
+
+        }
+        setlistRepository.save(setlist);
+
+        return ResponseEntity.ok(setlist);
+    }
+
 }
