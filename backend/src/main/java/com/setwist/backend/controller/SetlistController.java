@@ -2,6 +2,7 @@ package com.setwist.backend.controller;
 
 import java.util.List;
 
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.setwist.backend.model.Setlist;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.SetlistSong;
+import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistRepository;
 import com.setwist.backend.repository.SongRepository;
 
@@ -24,10 +26,13 @@ public class SetlistController {
 
     private final SetlistRepository setlistRepository;
     private final SongRepository songRepository;
+    private final BandRepository bandRepository;
 
-    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository) {
+    public SetlistController(SetlistRepository setlistRepository, SongRepository songRepository,
+            BandRepository bandRepository) {
         this.setlistRepository = setlistRepository;
         this.songRepository = songRepository;
+        this.bandRepository = bandRepository;
     }
 
     // 1. READ All - Listar todas as Setlists
@@ -36,7 +41,13 @@ public class SetlistController {
         return setlistRepository.findAll();
     }
 
-    // 2. READ ONE - Mostrar Setlist por ID
+    // 2. READ BY BAND - Mostrar Setlists de uma banda específica
+    @GetMapping("/band/{bandId}")
+    public List<Setlist> getSetlistsByBand(@PathVariable Long bandId) {
+        return setlistRepository.findByBandId(bandId);
+    }
+
+    // 3. READ ONE - Mostrar Setlist por ID
     @GetMapping("/{id}")
     public ResponseEntity<Setlist> getSetlistById(@PathVariable Long id) {
         return setlistRepository.findById(id)
@@ -44,13 +55,19 @@ public class SetlistController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. CREATE - Criar nova setlist
-    @PostMapping
-    public Setlist createSetlist(@RequestBody Setlist setlist) {
-        return setlistRepository.save(setlist);
+    // 4. CREATE - Criar nova setlist
+    @PostMapping("/band/{bandId}")
+    public ResponseEntity<Setlist> createSetlistForBand(@PathVariable Long bandId, @RequestBody Setlist setlist) {
+        return bandRepository.findById(bandId)
+                .map(band -> {
+                    setlist.setBand(band);
+                    Setlist savedSetlist = setlistRepository.save(setlist);
+                    return ResponseEntity.ok(savedSetlist);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. UPDATE - Editar nome e descrição
+    // 5. UPDATE - Editar nome e descrição
     @PutMapping("/{id}")
     public ResponseEntity<Setlist> updateSetlist(@PathVariable Long id, @RequestBody Setlist setlistDetails) {
         return setlistRepository.findById(id)
@@ -63,7 +80,7 @@ public class SetlistController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. DELETE - Apagar uma setlist
+    // 6. DELETE - Apagar uma setlist
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSetlist(@PathVariable Long id) {
         if (setlistRepository.existsById(id)) {
@@ -75,7 +92,7 @@ public class SetlistController {
 
     // GESTÂO DE MÚSICAS
 
-    // 6. ADICIONAR MÚSICA À SETLIST (com posição automatica no fim do alinhamento)
+    // 7. ADICIONAR MÚSICA À SETLIST (com posição automatica no fim do alinhamento)
     // POST /api/setlist/1/songs/2
     @PostMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<Setlist> addSongToSetlist(@PathVariable Long setlistId, @PathVariable Long songId) {
@@ -97,7 +114,7 @@ public class SetlistController {
         return ResponseEntity.ok(setlist);
     }
 
-    // .7 REMOVER MÚSICA DA SETLIST
+    // .8 REMOVER MÚSICA DA SETLIST
     @DeleteMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<Setlist> removeSongFromSetlist(@PathVariable Long setlistId, @PathVariable Long songId) {
         Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
@@ -121,7 +138,7 @@ public class SetlistController {
         return ResponseEntity.ok(setlist);
     }
 
-    // 8. REORDENAR músicas na setlist (para drag&drop)
+    // 9. REORDENAR músicas na setlist (para drag&drop)
     @PutMapping("/{setlistId}/reorder")
     public ResponseEntity<Setlist> reorderSetlist(
             @PathVariable Long setlistId,
