@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.SongResponseDTO;
+import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SongRepository;
@@ -41,6 +42,9 @@ public class SongController {
     // 2. READ BY BAND (Retorna DTOs das músicas de uma banda específica)
     @GetMapping("/band/{bandId}")
     public List<SongResponseDTO> getSongsByBand(@PathVariable Long bandId) {
+        if (!bandRepository.existsById(bandId)) {
+            throw new ResourceNotFoundException("Banda", "id", bandId);
+        }
         return songRepository.findByBandId(bandId)
                 .stream()
                 .map(SongResponseDTO::new)
@@ -50,9 +54,9 @@ public class SongController {
     // 3. READ ONE (Retorna DTO de uma música por ID)
     @GetMapping("/{id}")
     public ResponseEntity<SongResponseDTO> getSongById(@PathVariable Long id) {
-        return songRepository.findById(id)
-                .map(song -> ResponseEntity.ok(new SongResponseDTO(song)))
-                .orElse(ResponseEntity.notFound().build());
+        Song song = songRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
+        return ResponseEntity.ok(new SongResponseDTO(song));
     }
 
     // 4. CREATE FOR BAND (Cria a música e devolve em formato DTO)
@@ -64,31 +68,31 @@ public class SongController {
                     Song savedSong = songRepository.save(song);
                     return ResponseEntity.ok(new SongResponseDTO(savedSong));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
     }
 
     // 5. UPDATE (Edita a música e devolve em formato DTO)
     @PutMapping("/{id}")
     public ResponseEntity<SongResponseDTO> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
-        return songRepository.findById(id)
-                .map(song -> {
-                    song.setTitle(songDetails.getTitle());
-                    song.setArtist(songDetails.getArtist());
-                    song.setSongKey(songDetails.getSongKey());
-                    song.setDurationSeconds(songDetails.getDurationSeconds());
-                    Song updatedSong = songRepository.save(song);
-                    return ResponseEntity.ok(new SongResponseDTO(updatedSong));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Song song = songRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
+
+        song.setTitle(songDetails.getTitle());
+        song.setArtist(songDetails.getArtist());
+        song.setSongKey(songDetails.getSongKey());
+        song.setDurationSeconds(songDetails.getDurationSeconds());
+
+        Song updatedSong = songRepository.save(song);
+        return ResponseEntity.ok(new SongResponseDTO(updatedSong));
     }
 
     // 6. DELETE - Apagar uma música
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSong(@PathVariable Long id) {
-        if (songRepository.existsById(id)) {
-            songRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
+        if (!songRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Música", "id", id);
         }
-        return ResponseEntity.notFound().build();
+        songRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
