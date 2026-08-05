@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.repository.BandRepository;
 
@@ -34,9 +35,9 @@ public class BandController {
     // 2. READ ONE - Ver 1 banda por ID
     @GetMapping("/{id}")
     public ResponseEntity<Band> getBandById(@PathVariable Long id) {
-        return bandRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Band band = bandRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", id));
+        return ResponseEntity.ok(band);
     }
 
     // 3. CREATE - Criar nova banda
@@ -48,24 +49,25 @@ public class BandController {
     // 4. UPDATE - Editar dados
     @PutMapping("/{id}")
     public ResponseEntity<Band> updateBand(@PathVariable Long id, @RequestBody Band bandDetails) {
-        return bandRepository.findById(id)
-                .map(band -> {
-                    band.setName(bandDetails.getName());
-                    band.setDescription(bandDetails.getDescription());
-                    Band updateBand = bandRepository.save(band);
-                    return ResponseEntity.ok(updateBand);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Band band = bandRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", id));
+
+        band.setName(bandDetails.getName());
+        band.setDescription(bandDetails.getDescription());
+
+        Band updateBand = bandRepository.save(band);
+        return ResponseEntity.ok(updateBand);
     }
 
     // 5. DELETE - Apagar banda
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBand(@PathVariable Long id) {
-        if (bandRepository.existsById(id)) {
-            bandRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
+        if (!bandRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Banda", "id", id);
         }
-        return ResponseEntity.notFound().build();
+
+        bandRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }
