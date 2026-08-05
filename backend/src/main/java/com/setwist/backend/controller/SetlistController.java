@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.SetlistResponseDTO;
+import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Setlist;
 import com.setwist.backend.model.SetlistSong;
 import com.setwist.backend.model.Song;
@@ -47,6 +48,9 @@ public class SetlistController {
     // 2. READ BY BAND - Mostrar Setlists de uma banda específica
     @GetMapping("/band/{bandId}")
     public List<SetlistResponseDTO> getSetlistsByBand(@PathVariable Long bandId) {
+        if (!bandRepository.existsById(bandId)) {
+            throw new ResourceNotFoundException("Banda", "id", bandId);
+        }
         return setlistRepository.findByBandId(bandId)
                 .stream()
                 .map(SetlistResponseDTO::new)
@@ -56,9 +60,9 @@ public class SetlistController {
     // 3. READ ONE - Mostrar Setlist por ID
     @GetMapping("/{id}")
     public ResponseEntity<SetlistResponseDTO> getSetlistById(@PathVariable Long id) {
-        return setlistRepository.findById(id)
-                .map(setlist -> ResponseEntity.ok(new SetlistResponseDTO(setlist)))
-                .orElse(ResponseEntity.notFound().build());
+        Setlist setlist = setlistRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
+        return ResponseEntity.ok(new SetlistResponseDTO(setlist));
     }
 
     // 4. CREATE - Criar nova setlist
@@ -71,31 +75,31 @@ public class SetlistController {
                     Setlist savedSetlist = setlistRepository.save(setlist);
                     return ResponseEntity.ok(new SetlistResponseDTO(savedSetlist));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
     }
 
     // 5. UPDATE - Editar nome e descrição
     @PutMapping("/{id}")
     public ResponseEntity<SetlistResponseDTO> updateSetlist(@PathVariable Long id,
             @RequestBody Setlist setlistDetails) {
-        return setlistRepository.findById(id)
-                .map(setlist -> {
-                    setlist.setName(setlistDetails.getName());
-                    setlist.setDescription(setlistDetails.getDescription());
-                    Setlist updatedSetlist = setlistRepository.save(setlist);
-                    return ResponseEntity.ok(new SetlistResponseDTO(updatedSetlist));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Setlist setlist = setlistRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
+
+        setlist.setName(setlistDetails.getName());
+        setlist.setDescription(setlistDetails.getDescription());
+        Setlist updatedSetlist = setlistRepository.save(setlist);
+
+        return ResponseEntity.ok(new SetlistResponseDTO(updatedSetlist));
     }
 
     // 6. DELETE - Apagar uma setlist
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSetlist(@PathVariable Long id) {
-        if (setlistRepository.existsById(id)) {
-            setlistRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
+        if (!setlistRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Setlist", "id", id);
         }
-        return ResponseEntity.notFound().build();
+        setlistRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     // GESTÃO DE MÚSICAS
@@ -104,12 +108,11 @@ public class SetlistController {
     @PostMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<SetlistResponseDTO> addSongToSetlist(@PathVariable Long setlistId,
             @PathVariable Long songId) {
-        Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
-        Song song = songRepository.findById(songId).orElse(null);
+        Setlist setlist = setlistRepository.findById(setlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
-        if (setlist == null || song == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Song song = songRepository.findById(songId)
+                .orElseThrow(() -> new ResourceNotFoundException("Música", "id", songId));
 
         int position = setlist.getSetlistSongs().size() + 1;
         SetlistSong setlistSong = new SetlistSong(setlist, song, position);
@@ -123,11 +126,8 @@ public class SetlistController {
     @DeleteMapping("/{setlistId}/songs/{songId}")
     public ResponseEntity<SetlistResponseDTO> removeSongFromSetlist(@PathVariable Long setlistId,
             @PathVariable Long songId) {
-        Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
-
-        if (setlist == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Setlist setlist = setlistRepository.findById(setlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
         boolean removed = setlist.getSetlistSongs().removeIf(item -> item.getSong().getId().equals(songId));
 
@@ -149,11 +149,8 @@ public class SetlistController {
             @PathVariable Long setlistId,
             @RequestBody List<Long> newSongOrderIds) {
 
-        Setlist setlist = setlistRepository.findById(setlistId).orElse(null);
-
-        if (setlist == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Setlist setlist = setlistRepository.findById(setlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
         for (SetlistSong setlistSong : setlist.getSetlistSongs()) {
             int newIndex = newSongOrderIds.indexOf(setlistSong.getSong().getId());
