@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.setwist.backend.dto.SetlistRequestDTO;
 import com.setwist.backend.dto.SetlistResponseDTO;
-import com.setwist.backend.model.Setlist;
 import com.setwist.backend.service.SetlistService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/setlists")
@@ -42,15 +44,17 @@ public class SetlistController {
     }
 
     @PostMapping("/band/{bandId}")
-    public ResponseEntity<SetlistResponseDTO> createSetlistForBand(@PathVariable Long bandId,
-            @RequestBody Setlist setlist) {
-        return ResponseEntity.ok(setlistService.createSetlistForBand(bandId, setlist));
+    public ResponseEntity<SetlistResponseDTO> createSetlistForBand(
+            @PathVariable Long bandId,
+            @Valid @RequestBody SetlistRequestDTO dto) {
+        return ResponseEntity.ok(setlistService.createSetlistForBand(bandId, dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SetlistResponseDTO> updateSetlist(@PathVariable Long id,
-            @RequestBody Setlist setlistDetails) {
-        return ResponseEntity.ok(setlistService.updateSetlist(id, setlistDetails));
+    public ResponseEntity<SetlistResponseDTO> updateSetlist(
+            @PathVariable Long id,
+            @Valid @RequestBody SetlistRequestDTO dto) {
+        return ResponseEntity.ok(setlistService.updateSetlist(id, dto));
     }
 
     @DeleteMapping("/{id}")
@@ -60,13 +64,15 @@ public class SetlistController {
     }
 
     @PostMapping("/{setlistId}/songs/{songId}")
-    public ResponseEntity<SetlistResponseDTO> addSongToSetlist(@PathVariable Long setlistId,
+    public ResponseEntity<SetlistResponseDTO> addSongToSetlist(
+            @PathVariable Long setlistId,
             @PathVariable Long songId) {
         return ResponseEntity.ok(setlistService.addSongToSetlist(setlistId, songId));
     }
 
     @DeleteMapping("/{setlistId}/songs/{songId}")
-    public ResponseEntity<SetlistResponseDTO> removeSongFromSetlist(@PathVariable Long setlistId,
+    public ResponseEntity<SetlistResponseDTO> removeSongFromSetlist(
+            @PathVariable Long setlistId,
             @PathVariable Long songId) {
         return ResponseEntity.ok(setlistService.removeSongFromSetlist(setlistId, songId));
     }

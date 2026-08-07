@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.setwist.backend.dto.SongRequestDTO;
 import com.setwist.backend.dto.SongResponseDTO;
-import com.setwist.backend.model.Song;
 import com.setwist.backend.service.SongService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/songs")
@@ -26,31 +28,41 @@ public class SongController {
         this.songService = songService;
     }
 
+    // 1. READ ALL
     @GetMapping
     public List<SongResponseDTO> getAllSongs() {
         return songService.getAllSongs();
     }
 
+    // 2. READ BY BAND
     @GetMapping("/band/{bandId}")
     public List<SongResponseDTO> getSongsByBand(@PathVariable Long bandId) {
         return songService.getSongsByBand(bandId);
     }
 
+    // 3. READ ONE
     @GetMapping("/{id}")
     public ResponseEntity<SongResponseDTO> getSongById(@PathVariable Long id) {
         return ResponseEntity.ok(songService.getSongById(id));
     }
 
+    // 4. CREATE FOR BAND
     @PostMapping("/band/{bandId}")
-    public ResponseEntity<SongResponseDTO> createSongForBand(@PathVariable Long bandId, @RequestBody Song song) {
-        return ResponseEntity.ok(songService.createSongForBand(bandId, song));
+    public ResponseEntity<SongResponseDTO> createSongForBand(
+            @PathVariable Long bandId,
+            @Valid @RequestBody SongRequestDTO dto) {
+        return ResponseEntity.ok(songService.createSongForBand(bandId, dto));
     }
 
+    // 5. UPDATE
     @PutMapping("/{id}")
-    public ResponseEntity<SongResponseDTO> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
-        return ResponseEntity.ok(songService.updateSong(id, songDetails));
+    public ResponseEntity<SongResponseDTO> updateSong(
+            @PathVariable Long id,
+            @Valid @RequestBody SongRequestDTO dto) {
+        return ResponseEntity.ok(songService.updateSong(id, dto));
     }
 
+    // 6. DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSong(@PathVariable Long id) {
         songService.deleteSong(id);

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.repository.BandRepository;
@@ -26,14 +27,19 @@ public class BandService {
                 .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", id));
     }
 
-    public Band createBand(Band band) {
+    // Aceita BandRequestDTO para criar a banda
+    public Band createBand(BandRequestDTO dto) {
+        Band band = new Band();
+        band.setName(dto.getName());
+        band.setDescription(dto.getDescription());
         return bandRepository.save(band);
     }
 
-    public Band updateBand(Long id, Band bandDetails) {
+    // Aceita BandRequestDTO para atualizar a banda
+    public Band updateBand(Long id, BandRequestDTO dto) {
         Band band = getBandById(id);
-        band.setName(bandDetails.getName());
-        band.setDescription(bandDetails.getDescription());
+        band.setName(dto.getName());
+        band.setDescription(dto.getDescription());
         return bandRepository.save(band);
     }
 

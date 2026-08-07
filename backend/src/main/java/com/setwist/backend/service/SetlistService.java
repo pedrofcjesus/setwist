@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.setwist.backend.dto.SetlistRequestDTO;
 import com.setwist.backend.dto.SetlistResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
@@ -51,21 +52,25 @@ public class SetlistService {
         return new SetlistResponseDTO(setlist);
     }
 
-    public SetlistResponseDTO createSetlistForBand(Long bandId, Setlist setlist) {
+    public SetlistResponseDTO createSetlistForBand(Long bandId, SetlistRequestDTO dto) {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
 
+        Setlist setlist = new Setlist();
+        setlist.setName(dto.getName());
+        setlist.setDescription(dto.getDescription());
         setlist.setBand(band);
+
         Setlist savedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(savedSetlist);
     }
 
-    public SetlistResponseDTO updateSetlist(Long id, Setlist setlistDetails) {
+    public SetlistResponseDTO updateSetlist(Long id, SetlistRequestDTO dto) {
         Setlist setlist = setlistRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
 
-        setlist.setName(setlistDetails.getName());
-        setlist.setDescription(setlistDetails.getDescription());
+        setlist.setName(dto.getName());
+        setlist.setDescription(dto.getDescription());
 
         Setlist updatedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(updatedSetlist);
@@ -126,5 +131,4 @@ public class SetlistService {
         Setlist updatedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(updatedSetlist);
     }
-
 }

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.setwist.backend.dto.SongRequestDTO;
 import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
@@ -45,23 +46,31 @@ public class SongService {
         return new SongResponseDTO(song);
     }
 
-    public SongResponseDTO createSongForBand(Long bandId, Song song) {
+    // Aceita SongRequestDTO para criar a música
+    public SongResponseDTO createSongForBand(Long bandId, SongRequestDTO dto) {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
 
+        Song song = new Song();
+        song.setTitle(dto.getTitle());
+        song.setArtist(dto.getArtist());
+        song.setSongKey(dto.getSongKey());
+        song.setDurationSeconds(dto.getDurationSeconds());
         song.setBand(band);
+
         Song savedSong = songRepository.save(song);
         return new SongResponseDTO(savedSong);
     }
 
-    public SongResponseDTO updateSong(Long id, Song songDetails) {
+    // Aceita SongRequestDTO para atualizar a música
+    public SongResponseDTO updateSong(Long id, SongRequestDTO dto) {
         Song song = songRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
 
-        song.setTitle(songDetails.getTitle());
-        song.setArtist(songDetails.getArtist());
-        song.setSongKey(songDetails.getSongKey());
-        song.setDurationSeconds(songDetails.getDurationSeconds());
+        song.setTitle(dto.getTitle());
+        song.setArtist(dto.getArtist());
+        song.setSongKey(dto.getSongKey());
+        song.setDurationSeconds(dto.getDurationSeconds());
 
         Song updatedSong = songRepository.save(song);
         return new SongResponseDTO(updatedSong);

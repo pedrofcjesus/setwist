@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.service.BandService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/bands")
@@ -31,18 +34,18 @@ public class BandController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Band> getBAndById(@PathVariable Long id) {
+    public ResponseEntity<Band> getBandById(@PathVariable Long id) {
         return ResponseEntity.ok(bandService.getBandById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Band> createBand(@RequestBody Band band) {
-        return ResponseEntity.ok(bandService.createBand(band));
+    public ResponseEntity<Band> createBand(@Valid @RequestBody BandRequestDTO dto) {
+        return ResponseEntity.ok(bandService.createBand(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Band> updateBand(@PathVariable Long id, @RequestBody Band bandDetails) {
-        return ResponseEntity.ok(bandService.updateBand(id, bandDetails));
+    public ResponseEntity<Band> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto) {
+        return ResponseEntity.ok(bandService.updateBand(id, dto));
     }
 
     @DeleteMapping("/{id}")
@@ -50,5 +53,4 @@ public class BandController {
         bandService.deleteBand(id);
         return ResponseEntity.noContent().build();
     }
-
 }
