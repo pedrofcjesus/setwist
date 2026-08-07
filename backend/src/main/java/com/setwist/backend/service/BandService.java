@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.setwist.backend.dto.BandRequestDTO;
+import com.setwist.backend.dto.BandResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.repository.BandRepository;
@@ -18,29 +19,34 @@ public class BandService {
         this.bandRepository = bandRepository;
     }
 
-    public List<Band> getAllBands() {
-        return bandRepository.findAll();
+    public List<BandResponseDTO> getAllBands() {
+        return bandRepository.findAll()
+                .stream()
+                .map(BandResponseDTO::new)
+                .toList();
     }
 
-    public Band getBandById(Long id) {
-        return bandRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", id));
+    public BandResponseDTO getBandById(Long id) {
+        Band band = findBandEntityById(id);
+        return new BandResponseDTO(band);
     }
 
-    // Aceita BandRequestDTO para criar a banda
-    public Band createBand(BandRequestDTO dto) {
+    public BandResponseDTO createBand(BandRequestDTO dto) {
         Band band = new Band();
         band.setName(dto.getName());
         band.setDescription(dto.getDescription());
-        return bandRepository.save(band);
+
+        Band savedBand = bandRepository.save(band);
+        return new BandResponseDTO(savedBand);
     }
 
-    // Aceita BandRequestDTO para atualizar a banda
-    public Band updateBand(Long id, BandRequestDTO dto) {
-        Band band = getBandById(id);
+    public BandResponseDTO updateBand(Long id, BandRequestDTO dto) {
+        Band band = findBandEntityById(id);
         band.setName(dto.getName());
         band.setDescription(dto.getDescription());
-        return bandRepository.save(band);
+
+        Band updatedBand = bandRepository.save(band);
+        return new BandResponseDTO(updatedBand);
     }
 
     public void deleteBand(Long id) {
@@ -48,5 +54,10 @@ public class BandService {
             throw new ResourceNotFoundException("Banda", "id", id);
         }
         bandRepository.deleteById(id);
+    }
+
+    public Band findBandEntityById(Long id) {
+        return bandRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", id));
     }
 }

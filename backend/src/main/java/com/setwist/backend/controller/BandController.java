@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.BandRequestDTO;
-import com.setwist.backend.model.Band;
+import com.setwist.backend.dto.BandResponseDTO;
 import com.setwist.backend.service.BandService;
 
 import jakarta.validation.Valid;
@@ -29,22 +29,22 @@ public class BandController {
     }
 
     @GetMapping
-    public List<Band> getAllBands() {
+    public List<BandResponseDTO> getAllBands() {
         return bandService.getAllBands();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Band> getBandById(@PathVariable Long id) {
+    public ResponseEntity<BandResponseDTO> getBandById(@PathVariable Long id) {
         return ResponseEntity.ok(bandService.getBandById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Band> createBand(@Valid @RequestBody BandRequestDTO dto) {
+    public ResponseEntity<BandResponseDTO> createBand(@Valid @RequestBody BandRequestDTO dto) {
         return ResponseEntity.ok(bandService.createBand(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Band> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto) {
+    public ResponseEntity<BandResponseDTO> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto) {
         return ResponseEntity.ok(bandService.updateBand(id, dto));
     }
 
