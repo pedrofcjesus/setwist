@@ -34,7 +34,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-indigo-500 tracking-tight">Setwist</h1>
+          <h1 className="text-3xl font-extrabold text-indigo-500 tracking-tight">SetWist</h1>
           <p className="text-slate-400 text-sm mt-2">Gere as tuas músicas e setlists num só lugar</p>
         </div>
 
