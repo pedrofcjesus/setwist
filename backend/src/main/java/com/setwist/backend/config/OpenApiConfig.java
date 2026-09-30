@@ -1,18 +1,22 @@
 package com.setwist.backend.config;
 
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
-
 @Configuration
+@OpenAPIDefinition(
+    info = @Info(title = "Setwist API", version = "1.0"),
+    security = @SecurityRequirement(name = "bearerAuth")
+)
+@SecurityScheme(
+    name = "bearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT"
+)
 public class OpenApiConfig {
-    public OpenAPI customOpenAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("SETWIST API")
-                        .version("1.0.0")
-                        .description(
-                                "Documentação interativa dos endpoints da API SETWIST (Gestão de Bandas, Músicas e Setlists)."));
-    }
 }
