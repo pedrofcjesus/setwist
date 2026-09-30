@@ -25,7 +25,6 @@ import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistRepository;
 import com.setwist.backend.repository.UserRepository;
-import com.setwist.backend.service.SetlistService;
 
 @ExtendWith(MockitoExtension.class)
 class SetlistServiceTest {
