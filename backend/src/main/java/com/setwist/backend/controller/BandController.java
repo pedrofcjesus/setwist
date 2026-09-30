@@ -17,10 +17,16 @@ import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.dto.BandResponseDTO;
 import com.setwist.backend.service.BandService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/bands")
+@Tag(name = "Bandas", description = "Gestão de bandas e projetos musicais do utilizador")
 public class BandController {
 
     private final BandService bandService;
@@ -30,27 +36,59 @@ public class BandController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar todas as bandas", description = "Devolve a lista de bandas associadas ao utilizador autenticado.")
+    @ApiResponse(responseCode = "200", description = "Lista de bandas devolvida com sucesso")
     public List<BandResponseDTO> getAllBands(Principal principal) {
         return bandService.getAllBandsForUser(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BandResponseDTO> getBandById(@PathVariable Long id, Principal principal) {
+    @Operation(summary = "Obter banda por ID", description = "Devolve os detalhes de uma banda específica pertencente ao utilizador.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Banda encontrada"),
+        @ApiResponse(responseCode = "404", description = "Banda não encontrada")
+    })
+    public ResponseEntity<BandResponseDTO> getBandById(
+            @Parameter(description = "ID da banda", required = true) @PathVariable Long id, 
+            Principal principal) {
         return ResponseEntity.ok(bandService.getBandByIdForUser(id, principal.getName()));
     }
 
     @PostMapping
-    public ResponseEntity<BandResponseDTO> createBand(@Valid @RequestBody BandRequestDTO dto, Principal principal) {
+    @Operation(summary = "Criar nova banda", description = "Cria uma nova banda associada ao utilizador autenticado.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Banda criada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados do pedido inválidos")
+    })
+    public ResponseEntity<BandResponseDTO> createBand(
+            @Valid @RequestBody BandRequestDTO dto, 
+            Principal principal) {
         return ResponseEntity.ok(bandService.createBand(dto, principal.getName()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BandResponseDTO> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto, Principal principal) {
+    @Operation(summary = "Atualizar banda", description = "Atualiza o nome e descrição de uma banda existente.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Banda atualizada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados do pedido inválidos"),
+        @ApiResponse(responseCode = "404", description = "Banda não encontrada")
+    })
+    public ResponseEntity<BandResponseDTO> updateBand(
+            @Parameter(description = "ID da banda", required = true) @PathVariable Long id, 
+            @Valid @RequestBody BandRequestDTO dto, 
+            Principal principal) {
         return ResponseEntity.ok(bandService.updateBand(id, dto, principal.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBand(@PathVariable Long id, Principal principal) {
+    @Operation(summary = "Eliminar banda", description = "Elimina permanentemente uma banda do utilizador.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Banda eliminada com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Banda não encontrada")
+    })
+    public ResponseEntity<Void> deleteBand(
+            @Parameter(description = "ID da banda a eliminar", required = true) @PathVariable Long id, 
+            Principal principal) {
         bandService.deleteBand(id, principal.getName());
         return ResponseEntity.noContent().build();
     }
