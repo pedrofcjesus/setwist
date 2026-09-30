@@ -1,5 +1,6 @@
 package com.setwist.backend.controller;
 
+import java.security.Principal;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -29,28 +30,28 @@ public class BandController {
     }
 
     @GetMapping
-    public List<BandResponseDTO> getAllBands() {
-        return bandService.getAllBands();
+    public List<BandResponseDTO> getAllBands(Principal principal) {
+        return bandService.getAllBandsForUser(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BandResponseDTO> getBandById(@PathVariable Long id) {
-        return ResponseEntity.ok(bandService.getBandById(id));
+    public ResponseEntity<BandResponseDTO> getBandById(@PathVariable Long id, Principal principal) {
+        return ResponseEntity.ok(bandService.getBandByIdForUser(id, principal.getName()));
     }
 
     @PostMapping
-    public ResponseEntity<BandResponseDTO> createBand(@Valid @RequestBody BandRequestDTO dto) {
-        return ResponseEntity.ok(bandService.createBand(dto));
+    public ResponseEntity<BandResponseDTO> createBand(@Valid @RequestBody BandRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(bandService.createBand(dto, principal.getName()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BandResponseDTO> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto) {
-        return ResponseEntity.ok(bandService.updateBand(id, dto));
+    public ResponseEntity<BandResponseDTO> updateBand(@PathVariable Long id, @Valid @RequestBody BandRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(bandService.updateBand(id, dto, principal.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBand(@PathVariable Long id) {
-        bandService.deleteBand(id);
+    public ResponseEntity<Void> deleteBand(@PathVariable Long id, Principal principal) {
+        bandService.deleteBand(id, principal.getName());
         return ResponseEntity.noContent().build();
     }
 }

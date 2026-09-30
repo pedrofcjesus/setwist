@@ -12,15 +12,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "bands")
-
 public class Band {
 
     @Id
@@ -38,6 +40,12 @@ public class Band {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    // Relação: Várias bandas pertencem a um Utilizador (Dono)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
+    private User user;
 
     // Uma banda - várias músicas
     @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -100,6 +108,14 @@ public class Band {
         this.updatedAt = updatedAt;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     public List<Song> getSongs() {
         return songs;
     }
@@ -115,5 +131,4 @@ public class Band {
     public void setSetlists(List<Setlist> setlists) {
         this.setlists = setlists;
     }
-
 }
