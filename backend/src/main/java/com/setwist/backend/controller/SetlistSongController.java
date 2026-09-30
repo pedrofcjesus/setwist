@@ -16,10 +16,16 @@ import com.setwist.backend.dto.SetlistSongReorderDTO;
 import com.setwist.backend.dto.SetlistSongRequestDTO;
 import com.setwist.backend.service.SetlistSongService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/setlists/{setlistId}/songs")
+@Tag(name = "Músicas da Setlist", description = "Endpoints para adicionar, remover e reordenar músicas dentro de uma setlist")
 public class SetlistSongController {
 
     private final SetlistSongService setlistSongService;
@@ -29,24 +35,41 @@ public class SetlistSongController {
     }
 
     @PostMapping
+    @Operation(summary = "Adicionar música à setlist", description = "Associa uma música existente a uma setlist do utilizador autenticado.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Música adicionada com sucesso à setlist"),
+        @ApiResponse(responseCode = "400", description = "Dados do pedido inválidos"),
+        @ApiResponse(responseCode = "404", description = "Setlist ou música não encontrada")
+    })
     public ResponseEntity<SetlistResponseDTO> addSong(
-            @PathVariable Long setlistId,
+            @Parameter(description = "ID da setlist", required = true) @PathVariable Long setlistId,
             @Valid @RequestBody SetlistSongRequestDTO dto,
             Principal principal) {
         return ResponseEntity.ok(setlistSongService.addSongToSetlist(setlistId, dto, principal.getName()));
     }
 
     @DeleteMapping("/{songId}")
+    @Operation(summary = "Remover música da setlist", description = "Remove a associação de uma música com a setlist e ajusta automaticamente as posições restantes.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Música removida da setlist com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Setlist ou música não encontrada")
+    })
     public ResponseEntity<SetlistResponseDTO> removeSong(
-            @PathVariable Long setlistId,
-            @PathVariable Long songId,
+            @Parameter(description = "ID da setlist", required = true) @PathVariable Long setlistId,
+            @Parameter(description = "ID da música a remover", required = true) @PathVariable Long songId,
             Principal principal) {
         return ResponseEntity.ok(setlistSongService.removeSongFromSetlist(setlistId, songId, principal.getName()));
     }
 
     @PutMapping("/reorder")
+    @Operation(summary = "Reordenar músicas da setlist", description = "Atualiza a ordem de apresentação das faixas enviando um array com a nova sequência de IDs de músicas.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Ordem das músicas atualizada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Lista de IDs inválida ou vazia"),
+        @ApiResponse(responseCode = "404", description = "Setlist não encontrada")
+    })
     public ResponseEntity<SetlistResponseDTO> reorderSongs(
-            @PathVariable Long setlistId,
+            @Parameter(description = "ID da setlist", required = true) @PathVariable Long setlistId,
             @Valid @RequestBody SetlistSongReorderDTO dto,
             Principal principal) {
         return ResponseEntity.ok(setlistSongService.reorderSongs(setlistId, dto, principal.getName()));

@@ -17,10 +17,16 @@ import com.setwist.backend.dto.SetlistRequestDTO;
 import com.setwist.backend.dto.SetlistResponseDTO;
 import com.setwist.backend.service.SetlistService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/setlists")
+@Tag(name = "Setlists", description = "Gestão de agrupamentos e alinhamentos de concertos")
 public class SetlistController {
 
     private final SetlistService setlistService;
@@ -30,27 +36,59 @@ public class SetlistController {
     }
 
     @GetMapping
+    @Operation(summary = "Listar todas as setlists", description = "Devolve a lista completa de setlists pertencentes ao utilizador autenticado.")
+    @ApiResponse(responseCode = "200", description = "Lista de setlists devolvida com sucesso")
     public List<SetlistResponseDTO> getAllSetlists(Principal principal) {
         return setlistService.getAllSetlistsForUser(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SetlistResponseDTO> getSetlistById(@PathVariable Long id, Principal principal) {
+    @Operation(summary = "Obter setlist por ID", description = "Devolve os detalhes de uma setlist específica pertencente ao utilizador.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Setlist encontrada"),
+        @ApiResponse(responseCode = "404", description = "Setlist não encontrada")
+    })
+    public ResponseEntity<SetlistResponseDTO> getSetlistById(
+            @Parameter(description = "ID da setlist", required = true) @PathVariable Long id, 
+            Principal principal) {
         return ResponseEntity.ok(setlistService.getSetlistByIdForUser(id, principal.getName()));
     }
 
     @PostMapping
-    public ResponseEntity<SetlistResponseDTO> createSetlist(@Valid @RequestBody SetlistRequestDTO dto, Principal principal) {
+    @Operation(summary = "Criar nova setlist", description = "Cria uma nova setlist associada ao utilizador autenticado.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Setlist criada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados do pedido inválidos")
+    })
+    public ResponseEntity<SetlistResponseDTO> createSetlist(
+            @Valid @RequestBody SetlistRequestDTO dto, 
+            Principal principal) {
         return ResponseEntity.ok(setlistService.createSetlist(dto, principal.getName()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SetlistResponseDTO> updateSetlist(@PathVariable Long id, @Valid @RequestBody SetlistRequestDTO dto, Principal principal) {
+    @Operation(summary = "Atualizar setlist", description = "Atualiza o nome, descrição ou banda de uma setlist existente.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Setlist atualizada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados do pedido inválidos"),
+        @ApiResponse(responseCode = "404", description = "Setlist não encontrada")
+    })
+    public ResponseEntity<SetlistResponseDTO> updateSetlist(
+            @Parameter(description = "ID da setlist", required = true) @PathVariable Long id, 
+            @Valid @RequestBody SetlistRequestDTO dto, 
+            Principal principal) {
         return ResponseEntity.ok(setlistService.updateSetlist(id, dto, principal.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSetlist(@PathVariable Long id, Principal principal) {
+    @Operation(summary = "Eliminar setlist", description = "Elimina permanentemente uma setlist do utilizador.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Setlist eliminada com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Setlist não encontrada")
+    })
+    public ResponseEntity<Void> deleteSetlist(
+            @Parameter(description = "ID da setlist a eliminar", required = true) @PathVariable Long id, 
+            Principal principal) {
         setlistService.deleteSetlist(id, principal.getName());
         return ResponseEntity.noContent().build();
     }
