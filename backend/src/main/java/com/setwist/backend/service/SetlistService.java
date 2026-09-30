@@ -9,126 +9,78 @@ import com.setwist.backend.dto.SetlistResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.model.Setlist;
-import com.setwist.backend.model.SetlistSong;
-import com.setwist.backend.model.Song;
+import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistRepository;
-import com.setwist.backend.repository.SongRepository;
+import com.setwist.backend.repository.UserRepository;
 
 @Service
 public class SetlistService {
 
     private final SetlistRepository setlistRepository;
-    private final SongRepository songRepository;
     private final BandRepository bandRepository;
+    private final UserRepository userRepository;
 
-    public SetlistService(SetlistRepository setlistRepository, SongRepository songRepository,
-            BandRepository bandRepository) {
+    public SetlistService(SetlistRepository setlistRepository, BandRepository bandRepository, UserRepository userRepository) {
         this.setlistRepository = setlistRepository;
-        this.songRepository = songRepository;
         this.bandRepository = bandRepository;
+        this.userRepository = userRepository;
     }
 
-    public List<SetlistResponseDTO> getAllSetlists() {
-        return setlistRepository.findAll()
+    public List<SetlistResponseDTO> getAllSetlistsForUser(String userEmail) {
+        return setlistRepository.findByUserEmail(userEmail)
                 .stream()
                 .map(SetlistResponseDTO::new)
                 .toList();
     }
 
-    public List<SetlistResponseDTO> getSetlistsByBand(Long bandId) {
-        if (!bandRepository.existsById(bandId)) {
-            throw new ResourceNotFoundException("Banda", "id", bandId);
-        }
-        return setlistRepository.findByBandId(bandId)
-                .stream()
-                .map(SetlistResponseDTO::new)
-                .toList();
-    }
-
-    public SetlistResponseDTO getSetlistById(Long id) {
-        Setlist setlist = setlistRepository.findById(id)
+    public SetlistResponseDTO getSetlistByIdForUser(Long id, String userEmail) {
+        Setlist setlist = setlistRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
         return new SetlistResponseDTO(setlist);
     }
 
-    public SetlistResponseDTO createSetlistForBand(Long bandId, SetlistRequestDTO dto) {
-        Band band = bandRepository.findById(bandId)
-                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
+    public SetlistResponseDTO createSetlist(SetlistRequestDTO dto, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilizador", "email", userEmail));
 
         Setlist setlist = new Setlist();
         setlist.setName(dto.getName());
         setlist.setDescription(dto.getDescription());
-        setlist.setBand(band);
+        setlist.setUser(user);
+
+        if (dto.getBandId() != null) {
+            Band band = bandRepository.findByIdAndUserEmail(dto.getBandId(), userEmail)
+                    .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", dto.getBandId()));
+            setlist.setBand(band);
+        }
 
         Setlist savedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(savedSetlist);
     }
 
-    public SetlistResponseDTO updateSetlist(Long id, SetlistRequestDTO dto) {
-        Setlist setlist = setlistRepository.findById(id)
+    public SetlistResponseDTO updateSetlist(Long id, SetlistRequestDTO dto, String userEmail) {
+        Setlist setlist = setlistRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
 
         setlist.setName(dto.getName());
         setlist.setDescription(dto.getDescription());
 
-        Setlist updatedSetlist = setlistRepository.save(setlist);
-        return new SetlistResponseDTO(updatedSetlist);
-    }
-
-    public void deleteSetlist(Long id) {
-        if (!setlistRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Setlist", "id", id);
-        }
-        setlistRepository.deleteById(id);
-    }
-
-    public SetlistResponseDTO addSongToSetlist(Long setlistId, Long songId) {
-        Setlist setlist = setlistRepository.findById(setlistId)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
-
-        Song song = songRepository.findById(songId)
-                .orElseThrow(() -> new ResourceNotFoundException("Música", "id", songId));
-
-        int position = setlist.getSetlistSongs().size() + 1;
-        SetlistSong setlistSong = new SetlistSong(setlist, song, position);
-        setlist.getSetlistSongs().add(setlistSong);
-
-        Setlist updatedSetlist = setlistRepository.save(setlist);
-        return new SetlistResponseDTO(updatedSetlist);
-    }
-
-    public SetlistResponseDTO removeSongFromSetlist(Long setlistId, Long songId) {
-        Setlist setlist = setlistRepository.findById(setlistId)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
-
-        boolean removed = setlist.getSetlistSongs().removeIf(item -> item.getSong().getId().equals(songId));
-
-        if (removed) {
-            int pos = 1;
-            for (SetlistSong item : setlist.getSetlistSongs()) {
-                item.setPosition(pos++);
-            }
-            Setlist updatedSetlist = setlistRepository.save(setlist);
-            return new SetlistResponseDTO(updatedSetlist);
-        }
-
-        return new SetlistResponseDTO(setlist);
-    }
-
-    public SetlistResponseDTO reorderSetlist(Long setlistId, List<Long> newSongOrderIds) {
-        Setlist setlist = setlistRepository.findById(setlistId)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
-
-        for (SetlistSong setlistSong : setlist.getSetlistSongs()) {
-            int newIndex = newSongOrderIds.indexOf(setlistSong.getSong().getId());
-
-            if (newIndex != -1) {
-                setlistSong.setPosition(newIndex + 1);
-            }
+        if (dto.getBandId() != null) {
+            Band band = bandRepository.findByIdAndUserEmail(dto.getBandId(), userEmail)
+                    .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", dto.getBandId()));
+            setlist.setBand(band);
+        } else {
+            setlist.setBand(null);
         }
 
         Setlist updatedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(updatedSetlist);
+    }
+
+    public void deleteSetlist(Long id, String userEmail) {
+        Setlist setlist = setlistRepository.findByIdAndUserEmail(id, userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
+        setlistRepository.delete(setlist);
     }
 }

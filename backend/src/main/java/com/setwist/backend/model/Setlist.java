@@ -7,17 +7,19 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "setlists")
@@ -27,8 +29,23 @@ public class Setlist {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
+
     private String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id")
+    private Band band;
+
+    // Relação com o Utilizador (Dono da setlist)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
+    private User user;
+
+    @OneToMany(mappedBy = "setlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SetlistSong> setlistSongs = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -37,44 +54,25 @@ public class Setlist {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Relação entre Song e Setlist
-    @OneToMany(mappedBy = "setlist", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC")
-
-    private List<SetlistSong> setlistSongs = new ArrayList<>();
-
-    @ManyToOne
-    @JoinColumn(name = "band_id")
-    private Band band;
-
-    // Construtor vazio
     public Setlist() {
-
     }
 
-    // Construtor com parâmetros
-    public Setlist(String name, String description) {
-        this.name = name;
-        this.description = description;
-    }
-
-    // Calculo dinâmico
+    // Métodos utilitários para cálculo de totais exigidos pelo SetlistResponseDTO
     public Integer getTotalSongs() {
         return setlistSongs != null ? setlistSongs.size() : 0;
     }
 
     public Integer getTotalDurationSeconds() {
-        if (setlistSongs == null || setlistSongs.isEmpty()) {
+        if (setlistSongs == null) {
             return 0;
         }
         return setlistSongs.stream()
-                .mapToInt(item -> (item.getSong() != null && item.getSong().getDurationSeconds() != null)
-                        ? item.getSong().getDurationSeconds()
-                        : 0)
+                .filter(ss -> ss.getSong() != null && ss.getSong().getDurationSeconds() != null)
+                .mapToInt(ss -> ss.getSong().getDurationSeconds())
                 .sum();
     }
 
-    // Getters e Setters
+    // Getters & Setters
     public Long getId() {
         return id;
     }
@@ -99,6 +97,30 @@ public class Setlist {
         this.description = description;
     }
 
+    public Band getBand() {
+        return band;
+    }
+
+    public void setBand(Band band) {
+        this.band = band;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public List<SetlistSong> getSetlistSongs() {
+        return setlistSongs;
+    }
+
+    public void setSetlistSongs(List<SetlistSong> setlistSongs) {
+        this.setlistSongs = setlistSongs;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -113,21 +135,5 @@ public class Setlist {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public List<SetlistSong> getSetlistSongs() {
-        return setlistSongs;
-    }
-
-    public void setSetlistSongs(List<SetlistSong> setlistSongs) {
-        this.setlistSongs = setlistSongs;
-    }
-
-    public Band getBand() {
-        return band;
-    }
-
-    public void setBand(Band band) {
-        this.band = band;
     }
 }

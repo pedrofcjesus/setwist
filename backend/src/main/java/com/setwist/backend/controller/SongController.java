@@ -1,5 +1,6 @@
 package com.setwist.backend.controller;
 
+import java.security.Principal;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -28,44 +29,29 @@ public class SongController {
         this.songService = songService;
     }
 
-    // 1. READ ALL
     @GetMapping
-    public List<SongResponseDTO> getAllSongs() {
-        return songService.getAllSongs();
+    public List<SongResponseDTO> getAllSongs(Principal principal) {
+        return songService.getAllSongsForUser(principal.getName());
     }
 
-    // 2. READ BY BAND
-    @GetMapping("/band/{bandId}")
-    public List<SongResponseDTO> getSongsByBand(@PathVariable Long bandId) {
-        return songService.getSongsByBand(bandId);
-    }
-
-    // 3. READ ONE
     @GetMapping("/{id}")
-    public ResponseEntity<SongResponseDTO> getSongById(@PathVariable Long id) {
-        return ResponseEntity.ok(songService.getSongById(id));
+    public ResponseEntity<SongResponseDTO> getSongById(@PathVariable Long id, Principal principal) {
+        return ResponseEntity.ok(songService.getSongByIdForUser(id, principal.getName()));
     }
 
-    // 4. CREATE FOR BAND
-    @PostMapping("/band/{bandId}")
-    public ResponseEntity<SongResponseDTO> createSongForBand(
-            @PathVariable Long bandId,
-            @Valid @RequestBody SongRequestDTO dto) {
-        return ResponseEntity.ok(songService.createSongForBand(bandId, dto));
+    @PostMapping
+    public ResponseEntity<SongResponseDTO> createSong(@Valid @RequestBody SongRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(songService.createSong(dto, principal.getName()));
     }
 
-    // 5. UPDATE
     @PutMapping("/{id}")
-    public ResponseEntity<SongResponseDTO> updateSong(
-            @PathVariable Long id,
-            @Valid @RequestBody SongRequestDTO dto) {
-        return ResponseEntity.ok(songService.updateSong(id, dto));
+    public ResponseEntity<SongResponseDTO> updateSong(@PathVariable Long id, @Valid @RequestBody SongRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(songService.updateSong(id, dto, principal.getName()));
     }
 
-    // 6. DELETE
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSong(@PathVariable Long id) {
-        songService.deleteSong(id);
+    public ResponseEntity<Void> deleteSong(@PathVariable Long id, Principal principal) {
+        songService.deleteSong(id, principal.getName());
         return ResponseEntity.noContent().build();
     }
 }

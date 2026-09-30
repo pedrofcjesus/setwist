@@ -1,5 +1,6 @@
 package com.setwist.backend.controller;
 
+import java.security.Principal;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -29,58 +30,28 @@ public class SetlistController {
     }
 
     @GetMapping
-    public List<SetlistResponseDTO> getAllSetlists() {
-        return setlistService.getAllSetlists();
-    }
-
-    @GetMapping("/band/{bandId}")
-    public List<SetlistResponseDTO> getSetlistsByBand(@PathVariable Long bandId) {
-        return setlistService.getSetlistsByBand(bandId);
+    public List<SetlistResponseDTO> getAllSetlists(Principal principal) {
+        return setlistService.getAllSetlistsForUser(principal.getName());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SetlistResponseDTO> getSetlistById(@PathVariable Long id) {
-        return ResponseEntity.ok(setlistService.getSetlistById(id));
+    public ResponseEntity<SetlistResponseDTO> getSetlistById(@PathVariable Long id, Principal principal) {
+        return ResponseEntity.ok(setlistService.getSetlistByIdForUser(id, principal.getName()));
     }
 
-    @PostMapping("/band/{bandId}")
-    public ResponseEntity<SetlistResponseDTO> createSetlistForBand(
-            @PathVariable Long bandId,
-            @Valid @RequestBody SetlistRequestDTO dto) {
-        return ResponseEntity.ok(setlistService.createSetlistForBand(bandId, dto));
+    @PostMapping
+    public ResponseEntity<SetlistResponseDTO> createSetlist(@Valid @RequestBody SetlistRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(setlistService.createSetlist(dto, principal.getName()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SetlistResponseDTO> updateSetlist(
-            @PathVariable Long id,
-            @Valid @RequestBody SetlistRequestDTO dto) {
-        return ResponseEntity.ok(setlistService.updateSetlist(id, dto));
+    public ResponseEntity<SetlistResponseDTO> updateSetlist(@PathVariable Long id, @Valid @RequestBody SetlistRequestDTO dto, Principal principal) {
+        return ResponseEntity.ok(setlistService.updateSetlist(id, dto, principal.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSetlist(@PathVariable Long id) {
-        setlistService.deleteSetlist(id);
+    public ResponseEntity<Void> deleteSetlist(@PathVariable Long id, Principal principal) {
+        setlistService.deleteSetlist(id, principal.getName());
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{setlistId}/songs/{songId}")
-    public ResponseEntity<SetlistResponseDTO> addSongToSetlist(
-            @PathVariable Long setlistId,
-            @PathVariable Long songId) {
-        return ResponseEntity.ok(setlistService.addSongToSetlist(setlistId, songId));
-    }
-
-    @DeleteMapping("/{setlistId}/songs/{songId}")
-    public ResponseEntity<SetlistResponseDTO> removeSongFromSetlist(
-            @PathVariable Long setlistId,
-            @PathVariable Long songId) {
-        return ResponseEntity.ok(setlistService.removeSongFromSetlist(setlistId, songId));
-    }
-
-    @PutMapping("/{setlistId}/reorder")
-    public ResponseEntity<SetlistResponseDTO> reorderSetlist(
-            @PathVariable Long setlistId,
-            @RequestBody List<Long> newSongOrderIds) {
-        return ResponseEntity.ok(setlistService.reorderSetlist(setlistId, newSongOrderIds));
     }
 }
