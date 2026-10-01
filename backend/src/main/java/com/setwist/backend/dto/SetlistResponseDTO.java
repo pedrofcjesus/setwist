@@ -93,7 +93,7 @@ public class SetlistResponseDTO {
         this.totalSongs = totalSongs;
     }
 
-    public Integer getTotalDurarionSeconds() {
+    public Integer getTotalDurationSeconds() {
         return totalDurationSeconds;
     }
 

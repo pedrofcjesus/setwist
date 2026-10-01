@@ -48,17 +48,17 @@ public class SetlistSongController {
         return ResponseEntity.ok(setlistSongService.addSongToSetlist(setlistId, dto, principal.getName()));
     }
 
-    @DeleteMapping("/{songId}")
-    @Operation(summary = "Remover música da setlist", description = "Remove a associação de uma música com a setlist e ajusta automaticamente as posições restantes.")
+    @DeleteMapping("/{repertoireItemId}")
+    @Operation(summary = "Remover música da setlist", description = "Remove a associação de um item de repertório com a setlist.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Música removida da setlist com sucesso"),
         @ApiResponse(responseCode = "404", description = "Setlist ou música não encontrada")
     })
     public ResponseEntity<SetlistResponseDTO> removeSong(
             @Parameter(description = "ID da setlist", required = true) @PathVariable Long setlistId,
-            @Parameter(description = "ID da música a remover", required = true) @PathVariable Long songId,
+            @Parameter(description = "ID do item de repertório a remover", required = true) @PathVariable Long repertoireItemId,
             Principal principal) {
-        return ResponseEntity.ok(setlistSongService.removeSongFromSetlist(setlistId, songId, principal.getName()));
+        return ResponseEntity.ok(setlistSongService.removeSongFromSetlist(setlistId, repertoireItemId, principal.getName()));
     }
 
     @PutMapping("/reorder")
