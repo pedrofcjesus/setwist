@@ -32,8 +32,8 @@ public class DataInitializer {
             PasswordEncoder passwordEncoder
     ) {
         return args -> {
-            if (userRepository.count() > 0) {
-                return; // Se já existirem utilizadores, não duplica dados
+            if (userRepository.findByEmail("pedro@example.com").isPresent()) {
+                return;
             }
 
             // 1. Utilizador
