@@ -7,10 +7,8 @@ import org.springframework.stereotype.Service;
 import com.setwist.backend.dto.SongRequestDTO;
 import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
-import com.setwist.backend.model.Band;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
-import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
 
@@ -18,12 +16,10 @@ import com.setwist.backend.repository.UserRepository;
 public class SongService {
 
     private final SongRepository songRepository;
-    private final BandRepository bandRepository;
     private final UserRepository userRepository;
 
-    public SongService(SongRepository songRepository, BandRepository bandRepository, UserRepository userRepository) {
+    public SongService(SongRepository songRepository, UserRepository userRepository) {
         this.songRepository = songRepository;
-        this.bandRepository = bandRepository;
         this.userRepository = userRepository;
     }
 
@@ -47,15 +43,7 @@ public class SongService {
         Song song = new Song();
         song.setTitle(dto.getTitle());
         song.setArtist(dto.getArtist());
-        song.setDurationSeconds(dto.getDurationSeconds());
-        song.setSongKey(dto.getSongKey());
         song.setUser(user);
-
-        if (dto.getBandId() != null) {
-            Band band = bandRepository.findByIdAndUserEmail(dto.getBandId(), userEmail)
-                    .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", dto.getBandId()));
-            song.setBand(band);
-        }
 
         Song savedSong = songRepository.save(song);
         return new SongResponseDTO(savedSong);
@@ -67,16 +55,6 @@ public class SongService {
 
         song.setTitle(dto.getTitle());
         song.setArtist(dto.getArtist());
-        song.setDurationSeconds(dto.getDurationSeconds());
-        song.setSongKey(dto.getSongKey());
-
-        if (dto.getBandId() != null) {
-            Band band = bandRepository.findByIdAndUserEmail(dto.getBandId(), userEmail)
-                    .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", dto.getBandId()));
-            song.setBand(band);
-        } else {
-            song.setBand(null);
-        }
 
         Song updatedSong = songRepository.save(song);
         return new SongResponseDTO(updatedSong);

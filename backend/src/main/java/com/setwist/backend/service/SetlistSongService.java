@@ -9,21 +9,21 @@ import com.setwist.backend.dto.SetlistResponseDTO;
 import com.setwist.backend.dto.SetlistSongReorderDTO;
 import com.setwist.backend.dto.SetlistSongRequestDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
+import com.setwist.backend.model.BandRepertoire;
 import com.setwist.backend.model.Setlist;
 import com.setwist.backend.model.SetlistSong;
-import com.setwist.backend.model.Song;
+import com.setwist.backend.repository.BandRepertoireRepository;
 import com.setwist.backend.repository.SetlistRepository;
-import com.setwist.backend.repository.SongRepository;
 
 @Service
 public class SetlistSongService {
 
     private final SetlistRepository setlistRepository;
-    private final SongRepository songRepository;
+    private final BandRepertoireRepository bandRepertoireRepository;
 
-    public SetlistSongService(SetlistRepository setlistRepository, SongRepository songRepository) {
+    public SetlistSongService(SetlistRepository setlistRepository, BandRepertoireRepository bandRepertoireRepository) {
         this.setlistRepository = setlistRepository;
-        this.songRepository = songRepository;
+        this.bandRepertoireRepository = bandRepertoireRepository;
     }
 
     @Transactional
@@ -31,16 +31,19 @@ public class SetlistSongService {
         Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
-        Song song = songRepository.findByIdAndUserEmail(dto.getSongId(), userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Música", "id", dto.getSongId()));
+        BandRepertoire repertoireItem = bandRepertoireRepository.findById(dto.getRepertoireItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", dto.getRepertoireItemId()));
 
-        // Evita adicionar a mesma música em duplicado na mesma setlist
+        // Evita adicionar o mesmo item de repertório em duplicado na mesma setlist
         boolean exists = setlist.getSetlistSongs().stream()
-                .anyMatch(ss -> ss.getSong().getId().equals(song.getId()));
+                .anyMatch(ss -> ss.getRepertoireItem() != null && ss.getRepertoireItem().getId().equals(repertoireItem.getId()));
 
         if (!exists) {
             int position = (dto.getPosition() != null) ? dto.getPosition() : setlist.getSetlistSongs().size() + 1;
-            SetlistSong setlistSong = new SetlistSong(setlist, song, position);
+            SetlistSong setlistSong = new SetlistSong(setlist, repertoireItem, position);
+            if (dto.getNotes() != null) {
+                setlistSong.setNotes(dto.getNotes());
+            }
             setlist.getSetlistSongs().add(setlistSong);
             setlistRepository.save(setlist);
         }
@@ -49,11 +52,11 @@ public class SetlistSongService {
     }
 
     @Transactional
-    public SetlistResponseDTO removeSongFromSetlist(Long setlistId, Long songId, String userEmail) {
+    public SetlistResponseDTO removeSongFromSetlist(Long setlistId, Long repertoireItemId, String userEmail) {
         Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
-        setlist.getSetlistSongs().removeIf(ss -> ss.getSong().getId().equals(songId));
+        setlist.getSetlistSongs().removeIf(ss -> ss.getRepertoireItem() != null && ss.getRepertoireItem().getId().equals(repertoireItemId));
 
         // Reajusta as posições das músicas restantes
         int pos = 1;
@@ -70,12 +73,14 @@ public class SetlistSongService {
         Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
 
-        List<Long> newOrderIds = dto.getSongIds();
+        List<Long> newOrderIds = dto.getSongIds(); // IDs dos itens de repertório na nova ordem
 
         for (SetlistSong ss : setlist.getSetlistSongs()) {
-            int newPos = newOrderIds.indexOf(ss.getSong().getId());
-            if (newPos != -1) {
-                ss.setPosition(newPos + 1);
+            if (ss.getRepertoireItem() != null) {
+                int newPos = newOrderIds.indexOf(ss.getRepertoireItem().getId());
+                if (newPos != -1) {
+                    ss.setPosition(newPos + 1);
+                }
             }
         }
 
