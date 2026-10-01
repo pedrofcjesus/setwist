@@ -11,7 +11,7 @@ public interface SetlistSongRepository extends JpaRepository<SetlistSong, Long> 
 
     List<SetlistSong> findBySetlistIdOrderByPositionAsc(Long setlistId);
 
-    Optional<SetlistSong> findBySetlistIdAndSongId(Long setlistId, Long songId);
+    Optional<SetlistSong> findBySetlistIdAndRepertoireItemId(Long setlistId, Long repertoireItemId);
 
-    void deleteBySetlistIdAndSongId(Long setlistId, Long songId);
+    void deleteBySetlistIdAndRepertoireItemId(Long setlistId, Long repertoireItemId);
 }

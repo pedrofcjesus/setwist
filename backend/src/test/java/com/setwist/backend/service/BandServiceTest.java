@@ -20,7 +20,9 @@ import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.dto.BandResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
+import com.setwist.backend.model.BandMember;
 import com.setwist.backend.model.User;
+import com.setwist.backend.repository.BandMemberRepository;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.UserRepository;
 
@@ -32,6 +34,9 @@ class BandServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private BandMemberRepository bandMemberRepository;
 
     @InjectMocks
     private BandService bandService;
@@ -88,6 +93,8 @@ class BandServiceTest {
             return saved;
         });
 
+        when(bandMemberRepository.save(any(BandMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        
         BandResponseDTO result = bandService.createBand(dto, "pedro@example.com");
 
         assertThat(result).isNotNull();
