@@ -4,25 +4,27 @@ import jakarta.validation.constraints.NotNull;
 
 public class SetlistSongRequestDTO {
 
-    @NotNull(message = "O ID da música é obrigatório")
-    private Long songId;
+    @NotNull(message = "O ID do item de repertório da banda é obrigatório")
+    private Long repertoireItemId;
 
-    private Integer position; // Opcional: se não for enviado, vai para o fim da lista
+    private Integer position;
+    private String notes;
 
     public SetlistSongRequestDTO() {
     }
 
-    public SetlistSongRequestDTO(Long songId, Integer position) {
-        this.songId = songId;
+    public SetlistSongRequestDTO(Long repertoireItemId, Integer position, String notes) {
+        this.repertoireItemId = repertoireItemId;
         this.position = position;
+        this.notes = notes;
     }
 
-    public Long getSongId() {
-        return songId;
+    public Long getRepertoireItemId() {
+        return repertoireItemId;
     }
 
-    public void setSongId(Long songId) {
-        this.songId = songId;
+    public void setRepertoireItemId(Long repertoireItemId) {
+        this.repertoireItemId = repertoireItemId;
     }
 
     public Integer getPosition() {
@@ -31,5 +33,13 @@ public class SetlistSongRequestDTO {
 
     public void setPosition(Integer position) {
         this.position = position;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

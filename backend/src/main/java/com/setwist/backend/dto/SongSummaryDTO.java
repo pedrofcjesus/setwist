@@ -5,18 +5,14 @@ public class SongSummaryDTO {
     private Long id;
     private String title;
     private String artist;
-    private String songKey;
-    private Integer durationSeconds;
 
     public SongSummaryDTO() {
     }
 
-    public SongSummaryDTO(Long id, String title, String artist, String songKey, Integer durationSeconds) {
+    public SongSummaryDTO(Long id, String title, String artist) {
         this.id = id;
         this.title = title;
         this.artist = artist;
-        this.songKey = songKey;
-        this.durationSeconds = durationSeconds;
     }
 
     // Getters & Setters
@@ -42,22 +38,6 @@ public class SongSummaryDTO {
 
     public void setArtist(String artist) {
         this.artist = artist;
-    }
-
-    public String getSongKey() {
-        return songKey;
-    }
-
-    public void setSongKey(String songKey) {
-        this.songKey = songKey;
-    }
-
-    public Integer getDurationSeconds() {
-        return durationSeconds;
-    }
-
-    public void setDurationSeconds(Integer durationSeconds) {
-        this.durationSeconds = durationSeconds;
     }
 
 }

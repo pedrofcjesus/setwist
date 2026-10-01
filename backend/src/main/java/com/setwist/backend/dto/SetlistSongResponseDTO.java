@@ -6,7 +6,8 @@ public class SetlistSongResponseDTO {
 
     private Long id;
     private Integer position;
-    private SongSummaryDTO song;
+    private String notes;
+    private BandRepertoireResponseDTO repertoireItem;
 
     public SetlistSongResponseDTO() {
     }
@@ -14,17 +15,11 @@ public class SetlistSongResponseDTO {
     public SetlistSongResponseDTO(SetlistSong setlistSong) {
         this.id = setlistSong.getId();
         this.position = setlistSong.getPosition();
-        if (setlistSong.getSong() != null) {
-            this.song = new SongSummaryDTO(
-                    setlistSong.getSong().getId(),
-                    setlistSong.getSong().getTitle(),
-                    setlistSong.getSong().getArtist(),
-                    setlistSong.getSong().getSongKey(),
-                    setlistSong.getSong().getDurationSeconds());
+        this.notes = setlistSong.getNotes();
+        if (setlistSong.getRepertoireItem() != null) {
+            this.repertoireItem = new BandRepertoireResponseDTO(setlistSong.getRepertoireItem());
         }
     }
-
-    // Getters & Setters
 
     public Long getId() {
         return id;
@@ -42,11 +37,19 @@ public class SetlistSongResponseDTO {
         this.position = position;
     }
 
-    public SongSummaryDTO getSong() {
-        return song;
+    public String getNotes() {
+        return notes;
     }
 
-    public void setSong(SongSummaryDTO song) {
-        this.song = song;
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public BandRepertoireResponseDTO getRepertoireItem() {
+        return repertoireItem;
+    }
+
+    public void setRepertoireItem(BandRepertoireResponseDTO repertoireItem) {
+        this.repertoireItem = repertoireItem;
     }
 }

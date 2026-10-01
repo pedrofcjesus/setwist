@@ -67,8 +67,8 @@ public class Setlist {
             return 0;
         }
         return setlistSongs.stream()
-                .filter(ss -> ss.getSong() != null && ss.getSong().getDurationSeconds() != null)
-                .mapToInt(ss -> ss.getSong().getDurationSeconds())
+                .filter(ss -> ss.getRepertoireItem() != null && ss.getRepertoireItem().getDurationSeconds() != null)
+                .mapToInt(ss -> ss.getRepertoireItem().getDurationSeconds())
                 .sum();
     }
 

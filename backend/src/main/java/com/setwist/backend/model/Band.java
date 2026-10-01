@@ -41,94 +41,58 @@ public class Band {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // Relação: Várias bandas pertencem a um Utilizador (Dono)
+    // Criador/Dono da Banda
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
 
-    // Uma banda - várias músicas
+    // Membros e respetivas permissões
+    @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BandMember> members = new ArrayList<>();
+
+    // Repertório ativo da banda
     @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Song> songs = new ArrayList<>();
+    private List<BandRepertoire> repertoire = new ArrayList<>();
 
-    // Uma banda - várias setlists
+    // Setlists da banda
     @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Setlist> setlists = new ArrayList<>();
 
-    // Construtor vazio
-    public Band() {
-    }
+    public Band() {}
 
-    // Construtor
     public Band(String name, String description) {
         this.name = name;
         this.description = description;
     }
 
     // Getters & Setters
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getName() {
-        return name;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public String getDescription() {
-        return description;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public List<BandMember> getMembers() { return members; }
+    public void setMembers(List<BandMember> members) { this.members = members; }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+    public List<BandRepertoire> getRepertoire() { return repertoire; }
+    public void setRepertoire(List<BandRepertoire> repertoire) { this.repertoire = repertoire; }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public List<Song> getSongs() {
-        return songs;
-    }
-
-    public void setSongs(List<Song> songs) {
-        this.songs = songs;
-    }
-
-    public List<Setlist> getSetlists() {
-        return setlists;
-    }
-
-    public void setSetlists(List<Setlist> setlists) {
-        this.setlists = setlists;
-    }
+    public List<Setlist> getSetlists() { return setlists; }
+    public void setSetlists(List<Setlist> setlists) { this.setlists = setlists; }
 }

@@ -23,7 +23,6 @@ public class BandResponseDTO {
         this.updatedAt = band.getUpdatedAt();
     }
 
-    // Getters & Setters
     public Long getId() {
         return id;
     }

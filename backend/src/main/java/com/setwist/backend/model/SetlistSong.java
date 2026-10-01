@@ -12,7 +12,6 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "setlist_songs")
-
 public class SetlistSong {
 
     @Id
@@ -24,54 +23,36 @@ public class SetlistSong {
     @JsonIgnore
     private Setlist setlist;
 
+    // Aponta para o registo no repertório da banda
     @ManyToOne
-    @JoinColumn(name = "song_id")
-    private Song song;
+    @JoinColumn(name = "band_repertoire_id")
+    private BandRepertoire repertoireItem;
 
     private Integer position;
 
-    // Construtor vazio
-    public SetlistSong() {
-    }
+    private String notes; // Obs pontuais para a música neste concerto específico
 
-    // Construtor
+    public SetlistSong() {}
 
-    public SetlistSong(Setlist setlist, Song song, Integer position) {
+    public SetlistSong(Setlist setlist, BandRepertoire repertoireItem, Integer position) {
         this.setlist = setlist;
-        this.song = song;
+        this.repertoireItem = repertoireItem;
         this.position = position;
     }
 
     // Getters e Setters
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Setlist getSetlist() { return setlist; }
+    public void setSetlist(Setlist setlist) { this.setlist = setlist; }
 
-    public Setlist getSetlist() {
-        return setlist;
-    }
+    public BandRepertoire getRepertoireItem() { return repertoireItem; }
+    public void setRepertoireItem(BandRepertoire repertoireItem) { this.repertoireItem = repertoireItem; }
 
-    public void setSetlist(Setlist setlist) {
-        this.setlist = setlist;
-    }
+    public Integer getPosition() { return position; }
+    public void setPosition(Integer position) { this.position = position; }
 
-    public Song getSong() {
-        return song;
-    }
-
-    public void setSong(Song song) {
-        this.song = song;
-    }
-
-    public Integer getPosition() {
-        return position;
-    }
-
-    public void setPosition(Integer position) {
-        this.position = position;
-    }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 }
