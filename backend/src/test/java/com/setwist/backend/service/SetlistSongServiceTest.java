@@ -19,11 +19,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.setwist.backend.dto.SetlistResponseDTO;
 import com.setwist.backend.dto.SetlistSongRequestDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
+import com.setwist.backend.model.Band;
+import com.setwist.backend.model.BandRepertoire;
 import com.setwist.backend.model.Setlist;
-import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
+import com.setwist.backend.repository.BandRepertoireRepository;
 import com.setwist.backend.repository.SetlistRepository;
-import com.setwist.backend.repository.SongRepository;
 
 @ExtendWith(MockitoExtension.class)
 class SetlistSongServiceTest {
@@ -32,41 +33,47 @@ class SetlistSongServiceTest {
     private SetlistRepository setlistRepository;
 
     @Mock
-    private SongRepository songRepository;
+    private BandRepertoireRepository bandRepertoireRepository; // Atualizado para a nova arquitetura
 
     @InjectMocks
     private SetlistSongService setlistSongService;
 
     private User user;
+    private Band band;
     private Setlist setlist;
-    private Song song;
+    private BandRepertoire repertoireItem;
 
     @BeforeEach
     void setUp() {
         user = new User("Pedro", "pedro@example.com", "password123");
         user.setId(1L);
 
+        band = new Band();
+        band.setId(1L);
+        band.setName("Smoodies");
+
         setlist = new Setlist();
         setlist.setId(1L);
         setlist.setName("Setlist Principal");
         setlist.setUser(user);
+        setlist.setBand(band); // Setlist agora tem uma banda associada
 
-        song = new Song();
-        song.setId(100L);
-        song.setTitle("Song 1");
-        song.setArtist("Band A");
-        song.setUser(user);
+        repertoireItem = new BandRepertoire();
+        repertoireItem.setId(100L);
+        repertoireItem.setBand(band);
     }
 
     @Test
-    @DisplayName("Deve adicionar música à setlist se ambos pertencerem ao utilizador")
+    @DisplayName("Deve adicionar música à setlist se pertencer ao repertório da banda")
     void addSongToSetlist_Success() {
-        SetlistSongRequestDTO dto = new SetlistSongRequestDTO(100L, 1);
+        SetlistSongRequestDTO dto = new SetlistSongRequestDTO();
+        dto.setRepertoireItemId(100L); // Nota: confirma se o nome no teu DTO é setRepertoireItemId, setBandRepertoireId ou setSongId
+        dto.setPosition(1);
 
         when(setlistRepository.findByIdAndUserEmail(1L, "pedro@example.com"))
                 .thenReturn(Optional.of(setlist));
-        when(songRepository.findByIdAndUserEmail(100L, "pedro@example.com"))
-                .thenReturn(Optional.of(song));
+        when(bandRepertoireRepository.findById(100L))
+                .thenReturn(Optional.of(repertoireItem));
 
         SetlistResponseDTO result = setlistSongService.addSongToSetlist(1L, dto, "pedro@example.com");
 
@@ -75,13 +82,15 @@ class SetlistSongServiceTest {
     }
 
     @Test
-    @DisplayName("Deve recusar adicionar música se a música pertencer a outro utilizador")
-    void addSongToSetlist_SongBelongsToOtherUser() {
-        SetlistSongRequestDTO dto = new SetlistSongRequestDTO(999L, 1);
+    @DisplayName("Deve recusar adicionar música se o item não existir no repertório")
+    void addSongToSetlist_RepertoireItemNotFound() {
+        SetlistSongRequestDTO dto = new SetlistSongRequestDTO();
+        dto.setRepertoireItemId(999L);
+        dto.setPosition(1);
 
         when(setlistRepository.findByIdAndUserEmail(1L, "pedro@example.com"))
                 .thenReturn(Optional.of(setlist));
-        when(songRepository.findByIdAndUserEmail(999L, "pedro@example.com"))
+        when(bandRepertoireRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> setlistSongService.addSongToSetlist(1L, dto, "pedro@example.com"))
