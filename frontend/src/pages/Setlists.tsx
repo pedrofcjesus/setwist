@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
@@ -50,6 +50,13 @@ export function Setlists() {
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal para criar nova música na hora
+  const [isNewSongModalOpen, setIsNewSongModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newArtist, setNewArtist] = useState("");
+  const [songKey, setSongKey] = useState("");
+  const [bpm, setBpm] = useState<number | "">("");
+
   const fetchSetlistAndRepertoire = async () => {
     try {
       const setlistRes = await api.get(`/setlists/${id}`);
@@ -78,6 +85,42 @@ export function Setlists() {
       fetchSetlistAndRepertoire();
     } catch (err) {
       console.error("Erro ao adicionar música à setlist:", err);
+    }
+  };
+
+  const handleCreateAndAddSong = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newTitle || !setlist?.band?.id) return;
+
+    try {
+      // 1. Criar música no catálogo global
+      const songRes = await api.post("/songs", {
+        title: newTitle,
+        artist: newArtist || "Desconhecido",
+      });
+
+      // 2. Adicionar ao repertório da banda
+      const repRes = await api.post(`/bands/${setlist.band.id}/repertoire`, {
+        songId: songRes.data.id,
+        songKey,
+        bpm: bpm ? Number(bpm) : null,
+      });
+
+      // 3. Adicionar diretamente à setlist
+      await api.post(`/setlists/${id}/songs`, {
+        repertoireItemId: repRes.data.id,
+      });
+
+      // Reset
+      setNewTitle("");
+      setNewArtist("");
+      setSongKey("");
+      setBpm("");
+      setIsNewSongModalOpen(false);
+
+      fetchSetlistAndRepertoire();
+    } catch (err) {
+      console.error("Erro ao criar e adicionar nova música:", err);
     }
   };
 
@@ -128,7 +171,6 @@ export function Setlists() {
 
   return (
     <div className="space-y-6">
-      {/* Voltar para a página da Banda */}
       <div>
         <button
           onClick={() =>
@@ -144,7 +186,6 @@ export function Setlists() {
         </p>
       </div>
 
-      {/* PAINEL DIVIDIDO EM 2 COLUNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* COLUNA ESQUERDA: ALINHAMENTO */}
         <div className="lg:col-span-2 space-y-4">
@@ -235,15 +276,21 @@ export function Setlists() {
           )}
         </div>
 
-        {/* COLUNA DIREITA: POOL DE REPERTÓRIO */}
+        {/* COLUNA DIREITA: POOL DE REPERTÓRIO DA BANDA */}
         <div className="space-y-4">
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-            <h3 className="font-semibold text-slate-200">
-              Repertório da Banda
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Clica no + para adicionar ao alinhamento
-            </p>
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-slate-200">Repertório</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Clica no + para adicionar ao alinhamento
+              </p>
+            </div>
+            <button
+              onClick={() => setIsNewSongModalOpen(true)}
+              className="text-xs text-indigo-400 hover:underline font-medium"
+            >
+              + Criar Nova
+            </button>
           </div>
 
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
@@ -291,6 +338,94 @@ export function Setlists() {
           </div>
         </div>
       </div>
+
+      {/* Modal Criar Nova Música a partir da Setlist */}
+      {isNewSongModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Criar Nova Música
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              A música será guardada no catálogo geral, associada ao repertório
+              de {setlist.band?.name} e adicionada a este alinhamento.
+            </p>
+            <form onSubmit={handleCreateAndAddSong} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Título da Música
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Ex: Fly Me to the Moon"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Artista / Banda
+                </label>
+                <input
+                  type="text"
+                  value={newArtist}
+                  onChange={(e) => setNewArtist(e.target.value)}
+                  placeholder="Ex: Frank Sinatra"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    Tom da Banda
+                  </label>
+                  <input
+                    type="text"
+                    value={songKey}
+                    onChange={(e) => setSongKey(e.target.value)}
+                    placeholder="Ex: C"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    BPM
+                  </label>
+                  <input
+                    type="number"
+                    value={bpm}
+                    onChange={(e) =>
+                      setBpm(e.target.value ? Number(e.target.value) : "")
+                    }
+                    placeholder="Ex: 120"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewSongModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Criar & Adicionar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

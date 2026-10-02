@@ -45,8 +45,13 @@ export function BandDetail() {
   const [isRepertoireModalOpen, setIsRepertoireModalOpen] = useState(false);
   const [isSetlistModalOpen, setIsSetlistModalOpen] = useState(false);
 
-  // Form Repertório
+  // Alternar entre selecionar existente ou criar nova
+  const [isCreatingNewSong, setIsCreatingNewSong] = useState(false);
+
+  // Form Repertório / Nova Música
   const [selectedSongId, setSelectedSongId] = useState<number | "">("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newArtist, setNewArtist] = useState("");
   const [songKey, setSongKey] = useState("");
   const [bpm, setBpm] = useState<number | "">("");
   const [notes, setNotes] = useState("");
@@ -60,7 +65,7 @@ export function BandDetail() {
       const [bandRes, repRes, setlistRes, globalRes] = await Promise.all([
         api.get(`/bands/${id}`),
         api.get(`/bands/${id}/repertoire`),
-        api.get(`/setlists`), // Filtramos por banda localmente
+        api.get(`/setlists`),
         api.get(`/songs`),
       ]);
 
@@ -83,20 +88,38 @@ export function BandDetail() {
 
   const handleAddSongToRepertoire = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSongId) return;
 
     try {
+      let targetSongId = selectedSongId;
+
+      // Se for para criar uma nova música primeiro
+      if (isCreatingNewSong) {
+        if (!newTitle) return;
+        const songRes = await api.post("/songs", {
+          title: newTitle,
+          artist: newArtist || "Desconhecido",
+        });
+        targetSongId = songRes.data.id;
+      }
+
+      if (!targetSongId) return;
+
+      // Associa ao repertório da banda
       await api.post(`/bands/${id}/repertoire`, {
-        songId: Number(selectedSongId),
+        songId: Number(targetSongId),
         songKey,
         bpm: bpm ? Number(bpm) : null,
         notes,
       });
 
+      // Reset dos campos
       setSelectedSongId("");
+      setNewTitle("");
+      setNewArtist("");
       setSongKey("");
       setBpm("");
       setNotes("");
+      setIsCreatingNewSong(false);
       setIsRepertoireModalOpen(false);
       fetchData();
     } catch (err) {
@@ -143,7 +166,6 @@ export function BandDetail() {
 
   return (
     <div className="space-y-10">
-      {/* Botão Voltar + Cabeçalho */}
       <div>
         <button
           onClick={() => navigate("/bandas")}
@@ -157,7 +179,7 @@ export function BandDetail() {
         </p>
       </div>
 
-      {/* POOL DE SETLISTS */}
+      {/* SETLISTS */}
       <section className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
@@ -205,7 +227,7 @@ export function BandDetail() {
         )}
       </section>
 
-      {/* POOL DE REPERTÓRIO DA BANDA */}
+      {/* POOL DE REPERTÓRIO */}
       <section className="space-y-4">
         <div className="flex justify-between items-center border-t border-slate-800 pt-8">
           <div>
@@ -217,7 +239,10 @@ export function BandDetail() {
             </p>
           </div>
           <button
-            onClick={() => setIsRepertoireModalOpen(true)}
+            onClick={() => {
+              setIsCreatingNewSong(false);
+              setIsRepertoireModalOpen(true);
+            }}
             className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-xs font-medium rounded-lg transition"
           >
             + Adicionar ao Repertório
@@ -286,32 +311,74 @@ export function BandDetail() {
       {isRepertoireModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
-            <h3 className="text-xl font-bold text-slate-100 mb-4">
-              Adicionar Música ao Repertório
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-100">
+                Adicionar ao Repertório
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCreatingNewSong(!isCreatingNewSong)}
+                className="text-xs text-indigo-400 hover:underline"
+              >
+                {isCreatingNewSong
+                  ? "← Escolher Existente"
+                  : "+ Criar Nova Música"}
+              </button>
+            </div>
+
             <form onSubmit={handleAddSongToRepertoire} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
-                  Música do Catálogo
-                </label>
-                <select
-                  required
-                  value={selectedSongId}
-                  onChange={(e) =>
-                    setSelectedSongId(
-                      e.target.value ? Number(e.target.value) : "",
-                    )
-                  }
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
-                >
-                  <option value="">Seleciona uma música...</option>
-                  {globalSongs.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title} - {s.artist}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {isCreatingNewSong ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                      Título da Nova Música
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Ex: Superstition"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                      Artista / Banda
+                    </label>
+                    <input
+                      type="text"
+                      value={newArtist}
+                      onChange={(e) => setNewArtist(e.target.value)}
+                      placeholder="Ex: Stevie Wonder"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    Música do Catálogo
+                  </label>
+                  <select
+                    required
+                    value={selectedSongId}
+                    onChange={(e) =>
+                      setSelectedSongId(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  >
+                    <option value="">Seleciona uma música...</option>
+                    {globalSongs.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title} - {s.artist}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -367,7 +434,7 @@ export function BandDetail() {
                   type="submit"
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
                 >
-                  Adicionar
+                  {isCreatingNewSong ? "Criar & Adicionar" : "Adicionar"}
                 </button>
               </div>
             </form>
