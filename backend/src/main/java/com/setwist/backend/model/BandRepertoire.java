@@ -20,11 +20,13 @@ public class BandRepertoire {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Corrigido: aponta para band_id e usa FetchType.LAZY
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "band_id", nullable = false)
     @JsonIgnore
     private Band band;
 
+    // Mantém: aponta para song_id
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "song_id", nullable = false)
     private Song song;
