@@ -15,10 +15,13 @@ interface Song {
 
 interface BandRepertoireItem {
   id: number;
-  song: Song;
+  songId?: number;
+  title?: string; // O backend devolve o título aqui
+  artist?: string; // O backend devolve o artista aqui
   songKey: string;
   bpm: number;
   notes: string;
+  song?: Song; // Mantemos opcional para salvaguarda
 }
 
 export function Bands() {
@@ -220,10 +223,12 @@ export function Bands() {
                         {repertoire.map((item) => (
                           <tr key={item.id} className="text-slate-200">
                             <td className="py-3 px-2 font-medium text-slate-100">
-                              {item.song?.title || "Sem título"}
+                              {item.title || item.song?.title || "Sem título"}
                             </td>
                             <td className="py-3 px-2 text-slate-400">
-                              {item.song?.artist || "Desconhecido"}
+                              {item.artist ||
+                                item.song?.artist ||
+                                "Desconhecido"}
                             </td>
                             <td className="py-3 px-2">
                               <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-xs font-mono text-indigo-300">
