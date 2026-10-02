@@ -3,12 +3,15 @@ package com.setwist.backend.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.setwist.backend.dto.SongRequestDTO;
 import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
+import com.setwist.backend.repository.BandRepertoireRepository;
+import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
 
@@ -17,23 +20,31 @@ public class SongService {
 
     private final SongRepository songRepository;
     private final UserRepository userRepository;
+    private final BandRepertoireRepository bandRepertoireRepository;
+    private final SetlistSongRepository setlistSongRepository;
 
-    public SongService(SongRepository songRepository, UserRepository userRepository) {
+    public SongService(
+            SongRepository songRepository,
+            UserRepository userRepository,
+            BandRepertoireRepository bandRepertoireRepository,
+            SetlistSongRepository setlistSongRepository) {
         this.songRepository = songRepository;
         this.userRepository = userRepository;
+        this.bandRepertoireRepository = bandRepertoireRepository;
+        this.setlistSongRepository = setlistSongRepository;
     }
 
     public List<SongResponseDTO> getAllSongsForUser(String userEmail) {
         return songRepository.findByUserEmail(userEmail)
                 .stream()
-                .map(SongResponseDTO::new)
+                .map(this::mapToDTO)
                 .toList();
     }
 
     public SongResponseDTO getSongByIdForUser(Long id, String userEmail) {
         Song song = songRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
-        return new SongResponseDTO(song);
+        return mapToDTO(song);
     }
 
     public SongResponseDTO createSong(SongRequestDTO dto, String userEmail) {
@@ -46,7 +57,7 @@ public class SongService {
         song.setUser(user);
 
         Song savedSong = songRepository.save(song);
-        return new SongResponseDTO(savedSong);
+        return mapToDTO(savedSong);
     }
 
     public SongResponseDTO updateSong(Long id, SongRequestDTO dto, String userEmail) {
@@ -57,12 +68,28 @@ public class SongService {
         song.setArtist(dto.getArtist());
 
         Song updatedSong = songRepository.save(song);
-        return new SongResponseDTO(updatedSong);
+        return mapToDTO(updatedSong);
     }
 
+
+    @Transactional
     public void deleteSong(Long id, String userEmail) {
+        // Valida se a música existe e pertence ao utilizador autenticado
         Song song = songRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
+
+        // 1. Apagar primeiro das setlists (dependem do repertório)
+        setlistSongRepository.deleteBySongId(song.getId());
+
+        // 2. Apagar do repertório das bandas
+        bandRepertoireRepository.deleteBySongId(song.getId());
+
+        // 3. Apagar a música do catálogo
         songRepository.delete(song);
+    }
+
+    private SongResponseDTO mapToDTO(Song song) {
+        List<String> bandNames = bandRepertoireRepository.findBandNamesBySongId(song.getId());
+        return new SongResponseDTO(song, bandNames);
     }
 }

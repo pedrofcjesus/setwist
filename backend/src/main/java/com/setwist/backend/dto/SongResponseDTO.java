@@ -1,11 +1,14 @@
 package com.setwist.backend.dto;
 
+import java.util.List;
+
 import com.setwist.backend.model.Song;
 
 public class SongResponseDTO {
     private Long id;
     private String title;
     private String artist;
+    private List<String> bands;
 
     public SongResponseDTO() {
     }
@@ -14,6 +17,13 @@ public class SongResponseDTO {
         this.id = song.getId();
         this.title = song.getTitle();
         this.artist = song.getArtist();
+    }
+
+    public SongResponseDTO(Song song, List<String> bands) {
+        this.id = song.getId();
+        this.title = song.getTitle();
+        this.artist = song.getArtist();
+        this.bands = bands;
     }
 
     public Long getId() {
@@ -38,5 +48,13 @@ public class SongResponseDTO {
 
     public void setArtist(String artist) {
         this.artist = artist;
+    }
+
+    public List<String> getBands() {
+        return bands;
+    }
+
+    public void setBands(List<String> bands) {
+        this.bands = bands;
     }
 }
