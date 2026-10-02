@@ -1,13 +1,14 @@
-import { useContext, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthContext } from './context/AuthContext';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { MainLayout } from './layouts/MainLayout';
-import { DashboardHome } from './pages/DashboardHome';
-import { Bands } from './pages/Bands';
-import { Songs } from './pages/Songs';       // <-- Adicionar import
-import { Setlists } from './pages/Setlists'; // <-- Adicionar import
+import { useContext, type ReactNode } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthContext } from "./context/AuthContext";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { MainLayout } from "./layouts/MainLayout";
+import { DashboardHome } from "./pages/DashboardHome";
+import { Bands } from "./pages/Bands";
+import { BandDetail } from "./pages/BandDetail";
+import { Songs } from "./pages/Songs";
+import { Setlists } from "./pages/Setlists";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useContext(AuthContext);
@@ -20,9 +21,9 @@ export function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
-        <Route 
-          path="/" 
+
+        <Route
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout />
@@ -31,8 +32,9 @@ export function App() {
         >
           <Route index element={<DashboardHome />} />
           <Route path="bandas" element={<Bands />} />
-          <Route path="musicas" element={<Songs />} />       {/* <-- Rota ativa */}
-          <Route path="setlists" element={<Setlists />} />   {/* <-- Rota ativa */}
+          <Route path="bandas/:id" element={<BandDetail />} />
+          <Route path="musicas" element={<Songs />} />
+          <Route path="setlists/:id" element={<Setlists />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
