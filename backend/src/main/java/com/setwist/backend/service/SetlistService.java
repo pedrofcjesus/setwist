@@ -13,6 +13,7 @@ import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistRepository;
 import com.setwist.backend.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SetlistService {
@@ -59,6 +60,7 @@ public class SetlistService {
         return new SetlistResponseDTO(savedSetlist);
     }
 
+    @Transactional
     public SetlistResponseDTO updateSetlist(Long id, SetlistRequestDTO dto, String userEmail) {
         Setlist setlist = setlistRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));
@@ -78,6 +80,7 @@ public class SetlistService {
         return new SetlistResponseDTO(updatedSetlist);
     }
 
+    @Transactional
     public void deleteSetlist(Long id, String userEmail) {
         Setlist setlist = setlistRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", id));

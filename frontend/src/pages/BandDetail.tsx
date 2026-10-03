@@ -45,6 +45,17 @@ export function BandDetail() {
   const [isRepertoireModalOpen, setIsRepertoireModalOpen] = useState(false);
   const [isSetlistModalOpen, setIsSetlistModalOpen] = useState(false);
 
+  // Menu de 3 pontinhos nas Setlists
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+
+  // Modal Editar Setlist a partir do Cartão
+  const [editingSetlist, setEditingSetlist] = useState<Setlist | null>(null);
+  const [editSetlistName, setEditSetlistName] = useState("");
+  const [editSetlistDesc, setEditSetlistDesc] = useState("");
+
+  // Modal Apagar Setlist a partir do Cartão
+  const [deletingSetlist, setDeletingSetlist] = useState<Setlist | null>(null);
+
   // Alternar entre selecionar existente ou criar nova
   const [isCreatingNewSong, setIsCreatingNewSong] = useState(false);
 
@@ -56,7 +67,7 @@ export function BandDetail() {
   const [bpm, setBpm] = useState<number | "">("");
   const [notes, setNotes] = useState("");
 
-  // Form Setlist
+  // Form Criar Setlist
   const [setlistName, setSetlistName] = useState("");
   const [setlistDesc, setSetlistDesc] = useState("");
 
@@ -86,13 +97,19 @@ export function BandDetail() {
     fetchData();
   }, [id]);
 
+  // Fechar dropdowns abertos ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = () => setOpenDropdownId(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const handleAddSongToRepertoire = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       let targetSongId = selectedSongId;
 
-      // Se for para criar uma nova música primeiro
       if (isCreatingNewSong) {
         if (!newTitle) return;
         const songRes = await api.post("/songs", {
@@ -104,7 +121,6 @@ export function BandDetail() {
 
       if (!targetSongId) return;
 
-      // Associa ao repertório da banda
       await api.post(`/bands/${id}/repertoire`, {
         songId: Number(targetSongId),
         songKey,
@@ -112,7 +128,6 @@ export function BandDetail() {
         notes,
       });
 
-      // Reset dos campos
       setSelectedSongId("");
       setNewTitle("");
       setNewArtist("");
@@ -147,9 +162,58 @@ export function BandDetail() {
         bandId: Number(id),
       });
       setIsSetlistModalOpen(false);
+      setSetlistName("");
+      setSetlistDesc("");
       navigate(`/setlists/${res.data.id}`);
     } catch (err) {
       console.error("Erro ao criar setlist:", err);
+    }
+  };
+
+  // Abrir modal Editar Setlist a partir do cartão
+  const handleOpenEditSetlist = (s: Setlist, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenDropdownId(null);
+    setEditingSetlist(s);
+    setEditSetlistName(s.name);
+    setEditSetlistDesc(s.description || "");
+  };
+
+  // Guardar Edição de Setlist
+  const handleUpdateSetlist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSetlist || !editSetlistName) return;
+
+    try {
+      await api.put(`/setlists/${editingSetlist.id}`, {
+        name: editSetlistName,
+        description: editSetlistDesc,
+        bandId: Number(id),
+      });
+      setEditingSetlist(null);
+      fetchData();
+    } catch (err) {
+      console.error("Erro ao atualizar setlist:", err);
+    }
+  };
+
+  // Abrir modal Apagar Setlist a partir do cartão
+  const handleOpenDeleteSetlist = (s: Setlist, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenDropdownId(null);
+    setDeletingSetlist(s);
+  };
+
+  // Confirmar Eliminação de Setlist
+  const handleDeleteSetlist = async () => {
+    if (!deletingSetlist) return;
+
+    try {
+      await api.delete(`/setlists/${deletingSetlist.id}`);
+      setDeletingSetlist(null);
+      fetchData();
+    } catch (err) {
+      console.error("Erro ao apagar setlist:", err);
     }
   };
 
@@ -210,14 +274,65 @@ export function BandDetail() {
               <div
                 key={s.id}
                 onClick={() => navigate(`/setlists/${s.id}`)}
-                className="bg-slate-900 border border-slate-800 hover:border-indigo-500/40 p-5 rounded-xl cursor-pointer transition group"
+                className="relative bg-slate-900 border border-slate-800 hover:border-indigo-500/40 p-5 rounded-xl cursor-pointer transition group flex flex-col justify-between"
               >
-                <h4 className="font-semibold text-slate-200 group-hover:text-indigo-300 transition">
-                  {s.name}
-                </h4>
-                <p className="text-xs text-slate-400 mt-1 truncate">
-                  {s.description || "Sem notas"}
-                </p>
+                <div>
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-semibold text-slate-200 group-hover:text-indigo-300 transition pr-2">
+                      {s.name}
+                    </h4>
+
+                    {/* Botão de 3 Pontinhos */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(
+                            openDropdownId === s.id ? null : s.id,
+                          );
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+                        title="Opções da Setlist"
+                      >
+                        <svg
+                          className="w-4 h-4 fill-current"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                        </svg>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openDropdownId === s.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 py-1 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEditSetlist(s, e)}
+                            className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700/80 transition"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenDeleteSetlist(s, e)}
+                            className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-700/80 transition"
+                          >
+                            Apagar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mt-1 truncate">
+                    {s.description || "Sem notas"}
+                  </p>
+                </div>
+
                 <div className="flex items-center space-x-3 mt-4 text-xs font-mono text-slate-500">
                   <span>{s.totalSongs || 0} música(s)</span>
                 </div>
@@ -491,6 +606,93 @@ export function BandDetail() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Setlist (via Cartão) */}
+      {editingSetlist && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Setlist
+            </h3>
+            <form onSubmit={handleUpdateSetlist} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Nome da Setlist
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editSetlistName}
+                  onChange={(e) => setEditSetlistName(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Descrição / Notas
+                </label>
+                <input
+                  type="text"
+                  value={editSetlistDesc}
+                  onChange={(e) => setEditSetlistDesc(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSetlist(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Apagar Setlist (via Cartão) */}
+      {deletingSetlist && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">Apagar Setlist</h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas apagar a setlist{" "}
+              <span className="font-semibold text-slate-100">
+                "{deletingSetlist.name}"
+              </span>
+              ?
+            </p>
+            <p className="text-xs text-slate-500">
+              Esta ação elimina o alinhamento. As músicas continuarão no
+              repertório da banda.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingSetlist(null)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSetlist}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Apagar Definitivamente
+              </button>
+            </div>
           </div>
         </div>
       )}

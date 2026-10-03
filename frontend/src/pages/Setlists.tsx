@@ -57,6 +57,14 @@ export function Setlists() {
   const [songKey, setSongKey] = useState("");
   const [bpm, setBpm] = useState<number | "">("");
 
+  // Modal para Editar Setlist
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  // Modal para Apagar Setlist
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
   const fetchSetlistAndRepertoire = async () => {
     try {
       const setlistRes = await api.get(`/setlists/${id}`);
@@ -79,6 +87,44 @@ export function Setlists() {
     fetchSetlistAndRepertoire();
   }, [id]);
 
+  // Editar Setlist
+  const handleOpenEditModal = () => {
+    if (!setlist) return;
+    setEditName(setlist.name);
+    setEditDescription(setlist.description || "");
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateSetlist = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!setlist || !editName) return;
+
+    try {
+      await api.put(`/setlists/${id}`, {
+        name: editName,
+        description: editDescription,
+        bandId: setlist.band?.id || null,
+      });
+      setIsEditModalOpen(false);
+      fetchSetlistAndRepertoire();
+    } catch (err) {
+      console.error("Erro ao atualizar setlist:", err);
+    }
+  };
+
+  // Apagar Setlist
+  const handleDeleteSetlist = async () => {
+    if (!setlist) return;
+
+    try {
+      await api.delete(`/setlists/${id}`);
+      setIsDeleteModalOpen(false);
+      navigate(setlist.band ? `/bandas/${setlist.band.id}` : "/bandas");
+    } catch (err) {
+      console.error("Erro ao apagar setlist:", err);
+    }
+  };
+
   const handleAddSongToSetlist = async (repertoireItemId: number) => {
     try {
       await api.post(`/setlists/${id}/songs`, { repertoireItemId });
@@ -93,25 +139,21 @@ export function Setlists() {
     if (!newTitle || !setlist?.band?.id) return;
 
     try {
-      // 1. Criar música no catálogo global
       const songRes = await api.post("/songs", {
         title: newTitle,
         artist: newArtist || "Desconhecido",
       });
 
-      // 2. Adicionar ao repertório da banda
       const repRes = await api.post(`/bands/${setlist.band.id}/repertoire`, {
         songId: songRes.data.id,
         songKey,
         bpm: bpm ? Number(bpm) : null,
       });
 
-      // 3. Adicionar diretamente à setlist
       await api.post(`/setlists/${id}/songs`, {
         repertoireItemId: repRes.data.id,
       });
 
-      // Reset
       setNewTitle("");
       setNewArtist("");
       setSongKey("");
@@ -171,19 +213,37 @@ export function Setlists() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <button
-          onClick={() =>
-            navigate(setlist.band ? `/bandas/${setlist.band.id}` : "/bandas")
-          }
-          className="text-xs text-indigo-400 hover:underline mb-2 inline-block"
-        >
-          ← Voltar para {setlist.band ? setlist.band.name : "Bandas"}
-        </button>
-        <h2 className="text-3xl font-bold text-slate-100">{setlist.name}</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          {setlist.description || "Alinhamento do concerto"}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <button
+            onClick={() =>
+              navigate(setlist.band ? `/bandas/${setlist.band.id}` : "/bandas")
+            }
+            className="text-xs text-indigo-400 hover:underline mb-2 inline-block"
+          >
+            ← Voltar para {setlist.band ? setlist.band.name : "Bandas"}
+          </button>
+          <h2 className="text-3xl font-bold text-slate-100">{setlist.name}</h2>
+          <p className="text-slate-400 text-sm mt-1">
+            {setlist.description || "Alinhamento do concerto"}
+          </p>
+        </div>
+
+        {/* Botões Editar / Apagar Setlist */}
+        <div className="flex space-x-2 pt-1">
+          <button
+            onClick={handleOpenEditModal}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+          >
+            Editar Setlist
+          </button>
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
+          >
+            Apagar
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -338,6 +398,96 @@ export function Setlists() {
           </div>
         </div>
       </div>
+
+      {/* Modal Editar Setlist */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Setlist
+            </h3>
+            <form onSubmit={handleUpdateSetlist} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Nome da Setlist
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Descrição / Notas
+                </label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Ex: Concerto de Verão na Praça Central"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminação */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">Apagar Setlist</h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas apagar a setlist{" "}
+              <span className="font-semibold text-slate-100">
+                "{setlist.name}"
+              </span>
+              ?
+            </p>
+            <p className="text-xs text-slate-500">
+              Esta ação elimina o alinhamento de concerto. As músicas
+              continuarão guardadas no repertório da banda e no teu catálogo.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSetlist}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Apagar Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Criar Nova Música a partir da Setlist */}
       {isNewSongModalOpen && (
