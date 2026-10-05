@@ -3,6 +3,7 @@ package com.setwist.backend.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.setwist.backend.dto.BandRepertoireRequestDTO;
 import com.setwist.backend.dto.BandRepertoireResponseDTO;
@@ -12,6 +13,7 @@ import com.setwist.backend.model.BandRepertoire;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.repository.BandRepertoireRepository;
 import com.setwist.backend.repository.BandRepository;
+import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 
 @Service
@@ -20,14 +22,17 @@ public class BandRepertoireService {
     private final BandRepertoireRepository bandRepertoireRepository;
     private final BandRepository bandRepository;
     private final SongRepository songRepository;
+    private final SetlistSongRepository setlistSongRepository;
 
     public BandRepertoireService(
             BandRepertoireRepository bandRepertoireRepository,
             BandRepository bandRepository,
-            SongRepository songRepository) {
+            SongRepository songRepository,
+            SetlistSongRepository setlistSongRepository) {
         this.bandRepertoireRepository = bandRepertoireRepository;
         this.bandRepository = bandRepository;
         this.songRepository = songRepository;
+        this.setlistSongRepository = setlistSongRepository;
     }
 
     public List<BandRepertoireResponseDTO> getRepertoireForBand(Long bandId) {
@@ -51,9 +56,15 @@ public class BandRepertoireService {
         return new BandRepertoireResponseDTO(saved);
     }
 
+    @Transactional
     public void removeSongFromRepertoire(Long repertoireId) {
         BandRepertoire repertoire = bandRepertoireRepository.findById(repertoireId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireId));
+
+        // 1. Remove primeiro a música de quaisquer setlists onde esteja associada
+        setlistSongRepository.deleteByRepertoireItemId(repertoireId);
+
+        // 2. Remove o item do repertório principal da banda
         bandRepertoireRepository.delete(repertoire);
     }
 }
