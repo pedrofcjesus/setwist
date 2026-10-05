@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type DragEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
@@ -54,6 +54,10 @@ export function Setlists() {
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Estados para Drag and Drop
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   // Modal para criar nova música na hora
   const [isNewSongModalOpen, setIsNewSongModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -105,6 +109,68 @@ export function Setlists() {
     fetchSetlistAndRepertoire();
   }, [id]);
 
+  // Função centralizada para guardar a nova ordem no Backend (corrigido para 'songIds')
+  const saveNewOrder = async (updatedItems: SongItem[]) => {
+    const songIds = updatedItems.map((item) => item.repertoireItem.id);
+    try {
+      await api.put(`/setlists/${id}/songs/reorder`, { songIds });
+      fetchSetlistAndRepertoire();
+    } catch (err) {
+      console.error("Erro ao reordenar setlist:", err);
+      fetchSetlistAndRepertoire(); // Reverte em caso de erro
+    }
+  };
+
+  // Reordenação por botões (▲ / ▼)
+  const handleMove = (index: number, direction: "up" | "down") => {
+    if (!setlist) return;
+    const items = [...setlist.setlistSongs];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const temp = items[index];
+    items[index] = items[targetIndex];
+    items[targetIndex] = temp;
+
+    // Atualiza o estado local imediatamente (UI fluida)
+    setSetlist({ ...setlist, setlistSongs: items });
+    saveNewOrder(items);
+  };
+
+  // Lógica de Drag & Drop Nativo
+  const handleDragStart = (e: DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = (e: DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex || !setlist) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const items = [...setlist.setlistSongs];
+    const [draggedItem] = items.splice(draggedIndex, 1);
+    items.splice(dropIndex, 0, draggedItem);
+
+    setSetlist({ ...setlist, setlistSongs: items });
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    saveNewOrder(items);
+  };
+
   // Editar Setlist
   const handleOpenEditModal = () => {
     if (!setlist) return;
@@ -152,7 +218,7 @@ export function Setlists() {
     setEditRepBpm(rep.bpm || "");
   };
 
-  // Guardar Edição do Repertório (Global + Banda)
+  // Guardar Edição do Repertório
   const handleUpdateRepItem = async (e: FormEvent) => {
     e.preventDefault();
     if (!editingRepItem || !setlist?.band?.id) return;
@@ -160,7 +226,6 @@ export function Setlists() {
     try {
       const targetSongId = editingRepItem.songId ?? editingRepItem.song?.id;
 
-      // 1. Atualizar dados globais da música
       if (targetSongId) {
         await api.put(`/songs/${targetSongId}`, {
           title: editRepTitle,
@@ -168,7 +233,6 @@ export function Setlists() {
         });
       }
 
-      // 2. Atualizar tom e bpm no repertório da banda
       await api.put(
         `/bands/${setlist.band.id}/repertoire/${editingRepItem.id}`,
         {
@@ -188,7 +252,7 @@ export function Setlists() {
     }
   };
 
-  // Remover / Apagar Música do Repertório da Banda
+  // Remover Música do Repertório
   const handleConfirmDeleteRepItem = async () => {
     if (!deletingRepItem || !setlist?.band?.id) return;
 
@@ -257,27 +321,6 @@ export function Setlists() {
     }
   };
 
-  const handleMove = async (index: number, direction: "up" | "down") => {
-    if (!setlist) return;
-    const items = [...setlist.setlistSongs];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-
-    if (targetIndex < 0 || targetIndex >= items.length) return;
-
-    const temp = items[index];
-    items[index] = items[targetIndex];
-    items[targetIndex] = temp;
-
-    const repertoireItemIds = items.map((item) => item.repertoireItem.id);
-
-    try {
-      await api.put(`/setlists/${id}/songs/reorder`, { repertoireItemIds });
-      fetchSetlistAndRepertoire();
-    } catch (err) {
-      console.error("Erro ao reordenar setlist:", err);
-    }
-  };
-
   if (loading)
     return (
       <p className="text-slate-400 text-center py-12">A carregar setlist...</p>
@@ -336,7 +379,7 @@ export function Setlists() {
               Alinhamento ({setlist.setlistSongs.length} músicas)
             </h3>
             <span className="text-xs text-slate-500 font-mono">
-              Usa as setas para reordenar
+              Arrasta ou usa as setas para reordenar
             </span>
           </div>
 
@@ -359,12 +402,34 @@ export function Setlists() {
                   item.repertoireItem.song?.artist ||
                   "Desconhecido";
 
+                const isDragging = draggedIndex === index;
+                const isDragOver = dragOverIndex === index && !isDragging;
+
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 transition"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={() => {
+                      setDraggedIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    className={`flex items-center justify-between p-4 bg-slate-900 border rounded-xl transition cursor-grab active:cursor-grabbing ${
+                      isDragging
+                        ? "opacity-30 border-indigo-500 border-dashed"
+                        : isDragOver
+                          ? "border-indigo-400 bg-slate-800/80 scale-[1.01]"
+                          : "border-slate-800 hover:border-slate-700"
+                    }`}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3">
+                      {/* Pegadouro / Drag Handle */}
+                      <span className="text-slate-600 hover:text-slate-400 text-sm select-none pr-1">
+                        ⋮⋮
+                      </span>
+
                       <div className="flex flex-col space-y-1">
                         <button
                           disabled={index === 0}

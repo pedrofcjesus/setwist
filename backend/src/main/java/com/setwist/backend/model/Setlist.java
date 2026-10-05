@@ -19,6 +19,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -45,6 +46,7 @@ public class Setlist {
     private User user;
 
     @OneToMany(mappedBy = "setlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
     private List<SetlistSong> setlistSongs = new ArrayList<>();
 
     @CreationTimestamp
