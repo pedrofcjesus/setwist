@@ -13,6 +13,7 @@ interface SongItem {
     title?: string;
     artist?: string;
     song?: {
+      id?: number;
       title: string;
       artist: string;
     };
@@ -32,11 +33,14 @@ interface SetlistDetailData {
 
 interface RepertoireItem {
   id: number;
+  songId?: number;
   title?: string;
   artist?: string;
   songKey: string;
   bpm: number;
+  notes?: string;
   song?: {
+    id?: number;
     title: string;
     artist: string;
   };
@@ -56,6 +60,20 @@ export function Setlists() {
   const [newArtist, setNewArtist] = useState("");
   const [songKey, setSongKey] = useState("");
   const [bpm, setBpm] = useState<number | "">("");
+
+  // Modal para Editar Música do Repertório
+  const [editingRepItem, setEditingRepItem] = useState<RepertoireItem | null>(
+    null,
+  );
+  const [editRepTitle, setEditRepTitle] = useState("");
+  const [editRepArtist, setEditRepArtist] = useState("");
+  const [editRepKey, setEditRepKey] = useState("");
+  const [editRepBpm, setEditRepBpm] = useState<number | "">("");
+
+  // Modal para Remover Música do Repertório
+  const [deletingRepItem, setDeletingRepItem] = useState<RepertoireItem | null>(
+    null,
+  );
 
   // Modal para Editar Setlist
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -122,6 +140,70 @@ export function Setlists() {
       navigate(setlist.band ? `/bandas/${setlist.band.id}` : "/bandas");
     } catch (err) {
       console.error("Erro ao apagar setlist:", err);
+    }
+  };
+
+  // Abrir Modal de Edição da Música no Repertório
+  const handleOpenEditRepItem = (rep: RepertoireItem) => {
+    setEditingRepItem(rep);
+    setEditRepTitle(rep.title || rep.song?.title || "");
+    setEditRepArtist(rep.artist || rep.song?.artist || "");
+    setEditRepKey(rep.songKey || "");
+    setEditRepBpm(rep.bpm || "");
+  };
+
+  // Guardar Edição do Repertório (Global + Banda)
+  const handleUpdateRepItem = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingRepItem || !setlist?.band?.id) return;
+
+    try {
+      const targetSongId = editingRepItem.songId ?? editingRepItem.song?.id;
+
+      // 1. Atualizar dados globais da música
+      if (targetSongId) {
+        await api.put(`/songs/${targetSongId}`, {
+          title: editRepTitle,
+          artist: editRepArtist || "Desconhecido",
+        });
+      }
+
+      // 2. Atualizar tom e bpm no repertório da banda
+      await api.put(
+        `/bands/${setlist.band.id}/repertoire/${editingRepItem.id}`,
+        {
+          songKey: editRepKey,
+          bpm: editRepBpm ? Number(editRepBpm) : null,
+        },
+      );
+
+      setEditingRepItem(null);
+      fetchSetlistAndRepertoire();
+    } catch (err: any) {
+      console.error("Erro ao atualizar música do repertório:", err);
+      alert(
+        "Não foi possível guardar as alterações: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  // Remover / Apagar Música do Repertório da Banda
+  const handleConfirmDeleteRepItem = async () => {
+    if (!deletingRepItem || !setlist?.band?.id) return;
+
+    try {
+      await api.delete(
+        `/bands/${setlist.band.id}/repertoire/${deletingRepItem.id}`,
+      );
+      setDeletingRepItem(null);
+      fetchSetlistAndRepertoire();
+    } catch (err: any) {
+      console.error("Erro ao remover do repertório:", err);
+      alert(
+        "Não foi possível remover a música: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
     }
   };
 
@@ -369,28 +451,48 @@ export function Setlists() {
                     key={rep.id}
                     className={`p-3 rounded-xl border flex items-center justify-between text-xs transition ${
                       isAdded
-                        ? "bg-slate-900/40 border-slate-800/60 opacity-50"
+                        ? "bg-slate-900/40 border-slate-800/60 opacity-60"
                         : "bg-slate-900 border-slate-800 hover:border-slate-700"
                     }`}
                   >
-                    <div>
+                    <div className="pr-2">
                       <div className="font-semibold text-slate-200">
                         {title}
                       </div>
                       <div className="text-slate-400">{artist}</div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {rep.songKey || "-"} |{" "}
+                        {rep.bpm ? `${rep.bpm} BPM` : "-"}
+                      </div>
                     </div>
 
-                    <button
-                      disabled={isAdded}
-                      onClick={() => handleAddSongToSetlist(rep.id)}
-                      className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                        isAdded
-                          ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                          : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                      }`}
-                    >
-                      {isAdded ? "Adicionada" : "+ Adicionar"}
-                    </button>
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={() => handleOpenEditRepItem(rep)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-400 transition"
+                        title="Editar música"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        onClick={() => setDeletingRepItem(rep)}
+                        className="p-1.5 text-slate-400 hover:text-red-400 transition"
+                        title="Apagar do repertório"
+                      >
+                        🗑
+                      </button>
+                      <button
+                        disabled={isAdded}
+                        onClick={() => handleAddSongToSetlist(rep.id)}
+                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                          isAdded
+                            ? "bg-slate-800 text-slate-600 cursor-not-allowed"
+                            : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                        }`}
+                      >
+                        {isAdded ? "Adicionada" : "+"}
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -398,6 +500,133 @@ export function Setlists() {
           </div>
         </div>
       </div>
+
+      {/* Modal Editar Música do Repertório */}
+      {editingRepItem && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Música
+            </h3>
+            <form onSubmit={handleUpdateRepItem} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Título da Música (Global)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editRepTitle}
+                  onChange={(e) => setEditRepTitle(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Artista / Banda (Global)
+                </label>
+                <input
+                  type="text"
+                  value={editRepArtist}
+                  onChange={(e) => setEditRepArtist(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    Tom da Banda
+                  </label>
+                  <input
+                    type="text"
+                    value={editRepKey}
+                    onChange={(e) => setEditRepKey(e.target.value)}
+                    placeholder="Ex: C"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    BPM
+                  </label>
+                  <input
+                    type="number"
+                    value={editRepBpm}
+                    onChange={(e) =>
+                      setEditRepBpm(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
+                    placeholder="Ex: 120"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRepItem(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminação do Repertório */}
+      {deletingRepItem && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">
+              Remover do Repertório
+            </h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas remover{" "}
+              <span className="font-semibold text-slate-100">
+                "{deletingRepItem.title || deletingRepItem.song?.title}"
+              </span>{" "}
+              do repertório desta banda?
+            </p>
+            <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl">
+              <p className="text-xs text-amber-300 font-medium">
+                ⚠️ Aviso de Alinhamentos
+              </p>
+              <p className="text-xs text-amber-200/80 mt-1">
+                Se esta música estiver presente em algum alinhamento/setlist,
+                será automaticamente removida dessas setlists.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingRepItem(null)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteRepItem}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Sim, Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Editar Setlist */}
       {isEditModalOpen && (

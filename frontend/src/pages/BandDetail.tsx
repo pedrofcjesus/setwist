@@ -41,19 +41,38 @@ export function BandDetail() {
   const [globalSongs, setGlobalSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modais
+  // Modais de Repertório e Setlist
   const [isRepertoireModalOpen, setIsRepertoireModalOpen] = useState(false);
   const [isSetlistModalOpen, setIsSetlistModalOpen] = useState(false);
 
-  // Menu de 3 pontinhos nas Setlists
+  // Editar Música do Repertório
+  const [editingRepertoireItem, setEditingRepertoireItem] =
+    useState<RepertoireItem | null>(null);
+  const [editSongTitle, setEditSongTitle] = useState("");
+  const [editSongArtist, setEditSongArtist] = useState("");
+  const [editSongKey, setEditSongKey] = useState("");
+  const [editSongBpm, setEditSongBpm] = useState<number | "">("");
+  const [editSongNotes, setEditSongNotes] = useState("");
+
+  // Remover Música do Repertório (Modal de Confirmação com Aviso)
+  const [deletingRepertoireItem, setDeletingRepertoireItem] =
+    useState<RepertoireItem | null>(null);
+
+  // Editar e Apagar Banda
+  const [isEditBandModalOpen, setIsEditBandModalOpen] = useState(false);
+  const [editBandName, setEditBandName] = useState("");
+  const [editBandDesc, setEditBandDesc] = useState("");
+  const [isDeleteBandModalOpen, setIsDeleteBandModalOpen] = useState(false);
+
+  // Menu de opções nas Setlists
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
-  // Modal Editar Setlist a partir do Cartão
+  // Modal Editar Setlist
   const [editingSetlist, setEditingSetlist] = useState<Setlist | null>(null);
   const [editSetlistName, setEditSetlistName] = useState("");
   const [editSetlistDesc, setEditSetlistDesc] = useState("");
 
-  // Modal Apagar Setlist a partir do Cartão
+  // Modal Apagar Setlist
   const [deletingSetlist, setDeletingSetlist] = useState<Setlist | null>(null);
 
   // Alternar entre selecionar existente ou criar nova
@@ -97,12 +116,93 @@ export function BandDetail() {
     fetchData();
   }, [id]);
 
-  // Fechar dropdowns abertos ao clicar fora
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdownId(null);
     window.addEventListener("click", handleClickOutside);
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
+
+  // Editar Banda
+  const handleOpenEditBandModal = () => {
+    if (!band) return;
+    setEditBandName(band.name);
+    setEditBandDesc(band.description || "");
+    setIsEditBandModalOpen(true);
+  };
+
+  const handleUpdateBand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!band || !editBandName) return;
+
+    try {
+      await api.put(`/bands/${id}`, {
+        name: editBandName,
+        description: editBandDesc,
+      });
+      setIsEditBandModalOpen(false);
+      fetchData();
+    } catch (err) {
+      console.error("Erro ao atualizar banda:", err);
+    }
+  };
+
+  // Apagar Banda
+  const handleDeleteBand = async () => {
+    if (!band) return;
+
+    try {
+      await api.delete(`/bands/${id}`);
+      setIsDeleteBandModalOpen(false);
+      navigate("/bandas");
+    } catch (err) {
+      console.error("Erro ao apagar banda:", err);
+    }
+  };
+
+  // Abrir Modal de Edição de Música no Repertório
+  const handleOpenEditRepertoire = (item: RepertoireItem) => {
+    setEditingRepertoireItem(item);
+    setEditSongTitle(item.title || item.song?.title || "");
+    setEditSongArtist(item.artist || item.song?.artist || "");
+    setEditSongKey(item.songKey || "");
+    setEditSongBpm(item.bpm || "");
+    setEditSongNotes(item.notes || "");
+  };
+
+  // Guardar Edição de Música do Repertório (Global + Banda)
+  const handleUpdateRepertoireItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRepertoireItem) return;
+
+    try {
+      const targetSongId =
+        editingRepertoireItem.songId ?? editingRepertoireItem.song?.id;
+
+      // 1. Atualizar dados globais da música caso exista ID válido
+      if (targetSongId) {
+        await api.put(`/songs/${targetSongId}`, {
+          title: editSongTitle,
+          artist: editSongArtist || "Desconhecido",
+        });
+      }
+
+      // 2. Atualizar dados do repertório da banda
+      await api.put(`/bands/${id}/repertoire/${editingRepertoireItem.id}`, {
+        songKey: editSongKey,
+        bpm: editSongBpm ? Number(editSongBpm) : null,
+        notes: editSongNotes,
+      });
+
+      setEditingRepertoireItem(null);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao atualizar música do repertório:", err);
+      alert(
+        "Não foi possível guardar as alterações: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
 
   const handleAddSongToRepertoire = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,14 +242,20 @@ export function BandDetail() {
     }
   };
 
-  const handleDeleteRepertoireItem = async (repertoireId: number) => {
-    if (!confirm("Tem a certeza que deseja remover esta música do repertório?"))
-      return;
+  // Confirmar e Apagar Música do Repertório (mesmo que esteja em setlists)
+  const handleConfirmDeleteRepertoireItem = async () => {
+    if (!deletingRepertoireItem) return;
+
     try {
-      await api.delete(`/bands/${id}/repertoire/${repertoireId}`);
+      await api.delete(`/bands/${id}/repertoire/${deletingRepertoireItem.id}`);
+      setDeletingRepertoireItem(null);
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao remover do repertório:", err);
+      alert(
+        "Não foi possível remover a música: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
     }
   };
 
@@ -170,7 +276,6 @@ export function BandDetail() {
     }
   };
 
-  // Abrir modal Editar Setlist a partir do cartão
   const handleOpenEditSetlist = (s: Setlist, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenDropdownId(null);
@@ -179,7 +284,6 @@ export function BandDetail() {
     setEditSetlistDesc(s.description || "");
   };
 
-  // Guardar Edição de Setlist
   const handleUpdateSetlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSetlist || !editSetlistName) return;
@@ -197,14 +301,12 @@ export function BandDetail() {
     }
   };
 
-  // Abrir modal Apagar Setlist a partir do cartão
   const handleOpenDeleteSetlist = (s: Setlist, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenDropdownId(null);
     setDeletingSetlist(s);
   };
 
-  // Confirmar Eliminação de Setlist
   const handleDeleteSetlist = async () => {
     if (!deletingSetlist) return;
 
@@ -230,17 +332,36 @@ export function BandDetail() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <button
-          onClick={() => navigate("/bandas")}
-          className="text-xs text-indigo-400 hover:underline mb-2 inline-block"
-        >
-          ← Voltar às Bandas
-        </button>
-        <h2 className="text-3xl font-bold text-slate-100">{band.name}</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          {band.description || "Sem descrição"}
-        </p>
+      {/* CABEÇALHO DA BANDA */}
+      <div className="flex justify-between items-start">
+        <div>
+          <button
+            onClick={() => navigate("/bandas")}
+            className="text-xs text-indigo-400 hover:underline mb-2 inline-block"
+          >
+            ← Voltar às Bandas
+          </button>
+          <h2 className="text-3xl font-bold text-slate-100">{band.name}</h2>
+          <p className="text-slate-400 text-sm mt-1">
+            {band.description || "Sem descrição"}
+          </p>
+        </div>
+
+        {/* Botões Editar / Apagar Banda */}
+        <div className="flex space-x-2 pt-1">
+          <button
+            onClick={handleOpenEditBandModal}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+          >
+            Editar Banda
+          </button>
+          <button
+            onClick={() => setIsDeleteBandModalOpen(true)}
+            className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
+          >
+            Apagar Banda
+          </button>
+        </div>
       </div>
 
       {/* SETLISTS */}
@@ -282,7 +403,6 @@ export function BandDetail() {
                       {s.name}
                     </h4>
 
-                    {/* Botão de 3 Pontinhos */}
                     <div className="relative">
                       <button
                         type="button"
@@ -303,7 +423,6 @@ export function BandDetail() {
                         </svg>
                       </button>
 
-                      {/* Dropdown Menu */}
                       {openDropdownId === s.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
@@ -406,9 +525,15 @@ export function BandDetail() {
                     <td className="py-3 px-4 text-xs text-slate-400 italic">
                       {item.notes || "-"}
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-right space-x-3">
                       <button
-                        onClick={() => handleDeleteRepertoireItem(item.id)}
+                        onClick={() => handleOpenEditRepertoire(item)}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setDeletingRepertoireItem(item)}
                         className="text-xs text-red-400 hover:text-red-300 transition"
                       >
                         Remover
@@ -421,6 +546,236 @@ export function BandDetail() {
           </div>
         )}
       </section>
+
+      {/* Modal Editar Música do Repertório */}
+      {editingRepertoireItem && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Música no Repertório
+            </h3>
+            <form onSubmit={handleUpdateRepertoireItem} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Título da Música (Global)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editSongTitle}
+                  onChange={(e) => setEditSongTitle(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Artista / Banda (Global)
+                </label>
+                <input
+                  type="text"
+                  value={editSongArtist}
+                  onChange={(e) => setEditSongArtist(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    Tom da Banda
+                  </label>
+                  <input
+                    type="text"
+                    value={editSongKey}
+                    onChange={(e) => setEditSongKey(e.target.value)}
+                    placeholder="Ex: Abm"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    BPM
+                  </label>
+                  <input
+                    type="number"
+                    value={editSongBpm}
+                    onChange={(e) =>
+                      setEditSongBpm(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
+                    placeholder="Ex: 110"
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Notas / Arranjo da Banda
+                </label>
+                <input
+                  type="text"
+                  value={editSongNotes}
+                  onChange={(e) => setEditSongNotes(e.target.value)}
+                  placeholder="Ex: Tom subido para a vocalista"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRepertoireItem(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminação de Música do Repertório */}
+      {deletingRepertoireItem && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">
+              Remover Música do Repertório
+            </h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas remover{" "}
+              <span className="font-semibold text-slate-100">
+                "
+                {deletingRepertoireItem.title ||
+                  deletingRepertoireItem.song?.title}
+                "
+              </span>{" "}
+              do repertório desta banda?
+            </p>
+            <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl">
+              <p className="text-xs text-amber-300 font-medium">
+                ⚠️ Aviso de Alinhamentos
+              </p>
+              <p className="text-xs text-amber-200/80 mt-1">
+                Se esta música estiver incluída em alguma setlist/alinhamento da
+                banda, será também removida das respetivas setlists.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingRepertoireItem(null)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteRepertoireItem}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Sim, Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Banda */}
+      {isEditBandModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Banda
+            </h3>
+            <form onSubmit={handleUpdateBand} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Nome da Banda
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editBandName}
+                  onChange={(e) => setEditBandName(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Descrição / Género
+                </label>
+                <input
+                  type="text"
+                  value={editBandDesc}
+                  onChange={(e) => setEditBandDesc(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditBandModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Apagar Banda */}
+      {isDeleteBandModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">Apagar Banda</h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas apagar a banda{" "}
+              <span className="font-semibold text-slate-100">
+                "{band.name}"
+              </span>
+              ?
+            </p>
+            <p className="text-xs text-slate-500">
+              Esta ação elimina a banda e os seus alinhamentos associados. As
+              músicas no catálogo geral não serão eliminadas.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteBandModalOpen(false)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteBand}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Apagar Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Adicionar ao Repertório */}
       {isRepertoireModalOpen && (
