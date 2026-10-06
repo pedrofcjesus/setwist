@@ -15,10 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.SetlistRequestDTO;
 import com.setwist.backend.dto.SetlistResponseDTO;
-import com.setwist.backend.dto.SetlistSongReorderDTO;
-import com.setwist.backend.dto.SetlistSongRequestDTO;
 import com.setwist.backend.service.SetlistService;
-import com.setwist.backend.service.SetlistSongService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,11 +30,9 @@ import jakarta.validation.Valid;
 public class SetlistController {
 
     private final SetlistService setlistService;
-    private final SetlistSongService setlistSongService;
 
-    public SetlistController(SetlistService setlistService, SetlistSongService setlistSongService) {
+    public SetlistController(SetlistService setlistService) {
         this.setlistService = setlistService;
-        this.setlistSongService = setlistSongService;
     }
 
     @GetMapping
@@ -96,34 +91,5 @@ public class SetlistController {
             Principal principal) {
         setlistService.deleteSetlist(id, principal.getName());
         return ResponseEntity.noContent().build();
-    }
-
-    // --- GESTÃO DE MÚSICAS NA SETLIST ---
-
-    @PostMapping("/{id}/songs")
-    @Operation(summary = "Adicionar música à setlist", description = "Adiciona um item do repertório da banda a esta setlist.")
-    public ResponseEntity<SetlistResponseDTO> addSongToSetlist(
-            @PathVariable Long id,
-            @Valid @RequestBody SetlistSongRequestDTO dto,
-            Principal principal) {
-        return ResponseEntity.ok(setlistSongService.addSongToSetlist(id, dto, principal.getName()));
-    }
-
-    @DeleteMapping("/{id}/songs/{repertoireItemId}")
-    @Operation(summary = "Remover música da setlist", description = "Remove um item do repertório da setlist.")
-    public ResponseEntity<SetlistResponseDTO> removeSongFromSetlist(
-            @PathVariable Long id,
-            @PathVariable Long repertoireItemId,
-            Principal principal) {
-        return ResponseEntity.ok(setlistSongService.removeSongFromSetlist(id, repertoireItemId, principal.getName()));
-    }
-
-    @PutMapping("/{id}/songs/reorder")
-    @Operation(summary = "Reordenar músicas da setlist", description = "Atualiza a ordem das músicas na setlist.")
-    public ResponseEntity<SetlistResponseDTO> reorderSongs(
-            @PathVariable Long id,
-            @Valid @RequestBody SetlistSongReorderDTO dto,
-            Principal principal) {
-        return ResponseEntity.ok(setlistSongService.reorderSongs(id, dto, principal.getName()));
     }
 }

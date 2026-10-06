@@ -1,5 +1,6 @@
 package com.setwist.backend.service;
 
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -75,16 +76,25 @@ public class SetlistSongService {
 
         List<Long> newOrderIds = dto.getSongIds(); // IDs dos itens de repertório na nova ordem
 
-        for (SetlistSong ss : setlist.getSetlistSongs()) {
-            if (ss.getRepertoireItem() != null) {
-                int newPos = newOrderIds.indexOf(ss.getRepertoireItem().getId());
-                if (newPos != -1) {
-                    ss.setPosition(newPos + 1);
+        if (newOrderIds != null && setlist.getSetlistSongs() != null) {
+            for (SetlistSong ss : setlist.getSetlistSongs()) {
+                if (ss.getRepertoireItem() != null && ss.getRepertoireItem().getId() != null) {
+                    int newPos = newOrderIds.indexOf(ss.getRepertoireItem().getId());
+                    if (newPos != -1) {
+                        ss.setPosition(newPos + 1);
+                    }
                 }
             }
+
+            // Ordenação segura contra nulos e compatível com o Hibernate
+            setlist.getSetlistSongs().sort(
+                Comparator.comparing(
+                    SetlistSong::getPosition, 
+                    Comparator.nullsLast(Comparator.naturalOrder())
+                )
+            );
         }
 
-        setlist.getSetlistSongs().sort((a, b) -> Integer.compare(a.getPosition(), b.getPosition()));
         Setlist updatedSetlist = setlistRepository.save(setlist);
         return new SetlistResponseDTO(updatedSetlist);
     }
