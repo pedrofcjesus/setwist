@@ -2,11 +2,13 @@ package com.setwist.backend.service;
 
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.setwist.backend.dto.BandRepertoireRequestDTO;
 import com.setwist.backend.dto.BandRepertoireResponseDTO;
+import com.setwist.backend.dto.BandRepertoireUpdateDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
 import com.setwist.backend.model.BandRepertoire;
@@ -66,5 +68,32 @@ public class BandRepertoireService {
 
         // 2. Remove o item do repertório principal da banda
         bandRepertoireRepository.delete(repertoire);
+    }
+
+    @Transactional
+    public BandRepertoireResponseDTO updateRepertoireItem(Long repertoireId, BandRepertoireUpdateDTO dto, String userEmail) {
+        BandRepertoire repertoire = bandRepertoireRepository.findById(repertoireId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireId));
+
+        // Validação de Segurança: verifica se o item pertence à banda do utilizador autenticado
+        if (!repertoire.getBand().getUser().getEmail().equals(userEmail)) {
+            throw new AccessDeniedException("Não tem permissão para alterar este item de repertório.");
+        }
+
+        if (dto.getSongKey() != null) {
+            repertoire.setSongKey(dto.getSongKey());
+        }
+        if (dto.getBpm() != null) {
+            repertoire.setBpm(dto.getBpm());
+        }
+        if (dto.getDurationSeconds() != null) {
+            repertoire.setDurationSeconds(dto.getDurationSeconds());
+        }
+        if (dto.getNotes() != null) {
+            repertoire.setNotes(dto.getNotes());
+        }
+
+        BandRepertoire updated = bandRepertoireRepository.save(repertoire);
+        return new BandRepertoireResponseDTO(updated);
     }
 }

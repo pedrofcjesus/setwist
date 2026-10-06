@@ -8,12 +8,14 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.BandRepertoireRequestDTO;
 import com.setwist.backend.dto.BandRepertoireResponseDTO;
+import com.setwist.backend.dto.BandRepertoireUpdateDTO;
 import com.setwist.backend.service.BandRepertoireService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +46,16 @@ public class BandRepertoireController {
             @Valid @RequestBody BandRepertoireRequestDTO dto,
             Principal principal) {
         return ResponseEntity.ok(bandRepertoireService.addSongToBandRepertoire(bandId, dto, principal.getName()));
+    }
+
+    @PutMapping("/{repertoireId}")
+    @Operation(summary = "Atualizar item do repertório", description = "Atualiza as definições de uma música no repertório da banda (tom, BPM, notas).")
+    public ResponseEntity<BandRepertoireResponseDTO> updateRepertoireItem(
+            @PathVariable Long bandId,
+            @PathVariable Long repertoireId,
+            @Valid @RequestBody BandRepertoireUpdateDTO dto,
+            Principal principal) {
+        return ResponseEntity.ok(bandRepertoireService.updateRepertoireItem(repertoireId, dto, principal.getName()));
     }
 
     @DeleteMapping("/{repertoireId}")
