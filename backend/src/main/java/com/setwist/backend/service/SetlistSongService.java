@@ -89,7 +89,7 @@ public class SetlistSongService {
             // Ordenação segura contra nulos e compatível com o Hibernate
             setlist.getSetlistSongs().sort(
                 Comparator.comparing(
-                    SetlistSong::getPosition, 
+                    SetlistSong -> SetlistSong.getPosition(), 
                     Comparator.nullsLast(Comparator.naturalOrder())
                 )
             );
