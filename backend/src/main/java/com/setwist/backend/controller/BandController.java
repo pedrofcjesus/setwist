@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.dto.BandResponseDTO;
+import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.service.BandService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -91,5 +92,47 @@ public class BandController {
             Principal principal) {
         bandService.deleteBand(id, principal.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    // --- ENDPOINTS DE SUGESTÕES ---
+
+    @GetMapping("/{id}/suggestions")
+    @Operation(summary = "Listar sugestões da banda", description = "Devolve as músicas sugeridas para a banda.")
+    public ResponseEntity<List<SongResponseDTO>> getSuggestions(
+            @PathVariable Long id, 
+            Principal principal) {
+        return ResponseEntity.ok(bandService.getSuggestionsForBand(id, principal.getName()));
+    }
+
+    @PostMapping("/{id}/suggestions/{songId}")
+    @Operation(summary = "Adicionar música às sugestões", description = "Associa uma música do catálogo às sugestões da banda.")
+    public ResponseEntity<Void> addSuggestion(
+            @PathVariable Long id, 
+            @PathVariable Long songId, 
+            Principal principal) {
+        bandService.addSuggestionToBand(id, songId, principal.getName());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/suggestions/{songId}")
+    @Operation(summary = "Remover música das sugestões", description = "Remove a música das sugestões da banda sem a apagar do catálogo global.")
+    public ResponseEntity<Void> removeSuggestion(
+            @PathVariable Long id, 
+            @PathVariable Long songId, 
+            Principal principal) {
+        bandService.removeSuggestionFromBand(id, songId, principal.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- PROMOÇÃO AO REPERTÓRIO ---
+
+    @PostMapping("/{id}/repertoire/{songId}")
+    @Operation(summary = "Adicionar/Promover música ao repertório", description = "Adiciona a música ao repertório da banda e remove-a automaticamente das sugestões.")
+    public ResponseEntity<Void> promoteToRepertoire(
+            @PathVariable Long id, 
+            @PathVariable Long songId, 
+            Principal principal) {
+        bandService.promoteSongToRepertoire(id, songId, principal.getName());
+        return ResponseEntity.ok().build();
     }
 }
