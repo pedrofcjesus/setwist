@@ -1,7 +1,6 @@
 package com.setwist.backend.model;
 
 public enum BandRole {
-    ADMIN,   // Cria/edita banda, gere membros e setlists
-    MEMBER,  // Adiciona/edita músicas e setlists
-    VIEWER   // Apenas visualização de setlists e repertório
+    ADMIN,   // Criador da banda: gere banda, membros, pool e setlists
+    MEMBER   // Vê banda, pool e setlists; pode sugerir músicas e gerir as suas sugestões
 }

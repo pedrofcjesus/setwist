@@ -2,7 +2,6 @@ package com.setwist.backend.service;
 
 import java.util.List;
 
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,33 +10,37 @@ import com.setwist.backend.dto.BandRepertoireResponseDTO;
 import com.setwist.backend.dto.BandRepertoireUpdateDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
+import com.setwist.backend.model.BandMember;
 import com.setwist.backend.model.BandRepertoire;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.repository.BandRepertoireRepository;
-import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
+import com.setwist.backend.util.SongMatcher;
 
 @Service
 public class BandRepertoireService {
 
     private final BandRepertoireRepository bandRepertoireRepository;
-    private final BandRepository bandRepository;
     private final SongRepository songRepository;
     private final SetlistSongRepository setlistSongRepository;
+    private final BandAccessService accessService;
 
     public BandRepertoireService(
             BandRepertoireRepository bandRepertoireRepository,
-            BandRepository bandRepository,
             SongRepository songRepository,
-            SetlistSongRepository setlistSongRepository) {
+            SetlistSongRepository setlistSongRepository,
+            BandAccessService accessService) {
         this.bandRepertoireRepository = bandRepertoireRepository;
-        this.bandRepository = bandRepository;
         this.songRepository = songRepository;
         this.setlistSongRepository = setlistSongRepository;
+        this.accessService = accessService;
     }
 
-    public List<BandRepertoireResponseDTO> getRepertoireForBand(Long bandId) {
+    @Transactional(readOnly = true)
+    public List<BandRepertoireResponseDTO> getRepertoireForBand(Long bandId, String userEmail) {
+        accessService.requireMembership(bandId, userEmail);
+
         return bandRepertoireRepository.findByBandId(bandId)
                 .stream()
                 .map(BandRepertoireResponseDTO::new)
@@ -46,8 +49,8 @@ public class BandRepertoireService {
 
     @Transactional
     public BandRepertoireResponseDTO addSongToBandRepertoire(Long bandId, BandRepertoireRequestDTO dto, String userEmail) {
-        Band band = bandRepository.findByIdAndUserEmail(bandId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
+        BandMember admin = accessService.requireAdmin(bandId, userEmail);
+        Band band = admin.getBand();
 
         Song song = songRepository.findByIdAndUserEmail(dto.getSongId(), userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", dto.getSongId()));
@@ -58,14 +61,16 @@ public class BandRepertoireService {
         BandRepertoire saved = bandRepertoireRepository.save(repertoire);
 
         // Se a música estava nas sugestões da banda, sai das sugestões
-        band.getSuggestions().removeIf(s -> s.getId().equals(song.getId()));
+        band.getSuggestions().removeIf(s -> SongMatcher.isSameSong(s.getSong(), song));
 
         return new BandRepertoireResponseDTO(saved);
     }
 
     @Transactional
-    public void removeSongFromRepertoire(Long repertoireId) {
-        BandRepertoire repertoire = bandRepertoireRepository.findById(repertoireId)
+    public void removeSongFromRepertoire(Long bandId, Long repertoireId, String userEmail) {
+        accessService.requireAdmin(bandId, userEmail);
+
+        BandRepertoire repertoire = bandRepertoireRepository.findByIdAndBandId(repertoireId, bandId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireId));
 
         // 1. Remove primeiro a música de quaisquer setlists onde esteja associada
@@ -76,14 +81,11 @@ public class BandRepertoireService {
     }
 
     @Transactional
-    public BandRepertoireResponseDTO updateRepertoireItem(Long repertoireId, BandRepertoireUpdateDTO dto, String userEmail) {
-        BandRepertoire repertoire = bandRepertoireRepository.findById(repertoireId)
-                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireId));
+    public BandRepertoireResponseDTO updateRepertoireItem(Long bandId, Long repertoireId, BandRepertoireUpdateDTO dto, String userEmail) {
+        accessService.requireAdmin(bandId, userEmail);
 
-        // Validação de Segurança: verifica se o item pertence à banda do utilizador autenticado
-        if (!repertoire.getBand().getUser().getEmail().equals(userEmail)) {
-            throw new AccessDeniedException("Não tem permissão para alterar este item de repertório.");
-        }
+        BandRepertoire repertoire = bandRepertoireRepository.findByIdAndBandId(repertoireId, bandId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireId));
 
         if (dto.getSongKey() != null) {
             repertoire.setSongKey(dto.getSongKey());

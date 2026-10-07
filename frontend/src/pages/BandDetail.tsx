@@ -27,17 +27,42 @@ interface Setlist {
   totalDurationSeconds: number;
 }
 
+interface BandData {
+  id: number;
+  name: string;
+  description: string;
+  currentUserRole: "ADMIN" | "MEMBER";
+  currentUserInstrument?: string | null;
+}
+
+interface Member {
+  id: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  role: "ADMIN" | "MEMBER";
+  instrument?: string | null;
+  currentUser: boolean;
+}
+
+interface Suggestion {
+  id: number; // id da sugestão
+  songId: number; // id da música (usado em retirar / promover / editar)
+  title: string;
+  artist: string;
+  addedByName?: string | null;
+  canEdit: boolean;
+  canRemove: boolean;
+}
+
 export function BandDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [band, setBand] = useState<{
-    id: number;
-    name: string;
-    description: string;
-  } | null>(null);
+  const [band, setBand] = useState<BandData | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
-  const [suggestions, setSuggestions] = useState<Song[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [globalSongs, setGlobalSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,9 +94,20 @@ export function BandDetail() {
   const [newSuggestionArtist, setNewSuggestionArtist] = useState("");
 
   // Sugestões: editar
-  const [editingSuggestion, setEditingSuggestion] = useState<Song | null>(null);
+  const [editingSuggestion, setEditingSuggestion] = useState<Suggestion | null>(
+    null,
+  );
   const [editSuggestionTitle, setEditSuggestionTitle] = useState("");
   const [editSuggestionArtist, setEditSuggestionArtist] = useState("");
+
+  // Membros: adicionar, editar função, remover, sair
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberInstrument, setNewMemberInstrument] = useState("");
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [editMemberInstrument, setEditMemberInstrument] = useState("");
+  const [removingMember, setRemovingMember] = useState<Member | null>(null);
+  const [isLeaveBandModalOpen, setIsLeaveBandModalOpen] = useState(false);
 
   // Editar e Apagar Banda
   const [isEditBandModalOpen, setIsEditBandModalOpen] = useState(false);
@@ -107,16 +143,24 @@ export function BandDetail() {
 
   const fetchData = async () => {
     try {
-      const [bandRes, repRes, suggestionsRes, setlistRes, globalRes] =
-        await Promise.all([
-          api.get(`/bands/${id}`),
-          api.get(`/bands/${id}/repertoire`),
-          api.get(`/bands/${id}/suggestions`),
-          api.get(`/setlists`),
-          api.get(`/songs`),
-        ]);
+      const [
+        bandRes,
+        membersRes,
+        repRes,
+        suggestionsRes,
+        setlistRes,
+        globalRes,
+      ] = await Promise.all([
+        api.get(`/bands/${id}`),
+        api.get(`/bands/${id}/members`),
+        api.get(`/bands/${id}/repertoire`),
+        api.get(`/bands/${id}/suggestions`),
+        api.get(`/setlists`),
+        api.get(`/songs`),
+      ]);
 
       setBand(bandRes.data);
+      setMembers(membersRes.data);
       setRepertoire(repRes.data);
       setSuggestions(suggestionsRes.data);
       setSetlists(
@@ -321,7 +365,7 @@ export function BandDetail() {
     }
   };
 
-  const handleOpenEditSuggestion = (song: Song) => {
+  const handleOpenEditSuggestion = (song: Suggestion) => {
     setEditingSuggestion(song);
     setEditSuggestionTitle(song.title);
     setEditSuggestionArtist(song.artist || "");
@@ -332,7 +376,7 @@ export function BandDetail() {
     if (!editingSuggestion || !editSuggestionTitle) return;
 
     try {
-      await api.put(`/songs/${editingSuggestion.id}`, {
+      await api.put(`/songs/${editingSuggestion.songId}`, {
         title: editSuggestionTitle,
         artist: editSuggestionArtist || "Desconhecido",
       });
@@ -368,6 +412,88 @@ export function BandDetail() {
       console.error("Erro ao promover sugestão:", err);
       alert(
         "Não foi possível promover a música: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  // --- MEMBROS ---
+
+  const handleOpenAddMember = () => {
+    setNewMemberEmail("");
+    setNewMemberInstrument("");
+    setIsAddMemberModalOpen(true);
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberEmail) return;
+
+    try {
+      await api.post(`/bands/${id}/members`, {
+        userEmail: newMemberEmail,
+        instrument: newMemberInstrument || null,
+      });
+      setIsAddMemberModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao adicionar membro:", err);
+      alert(
+        "Não foi possível adicionar o membro: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handleOpenEditMember = (member: Member) => {
+    setEditingMember(member);
+    setEditMemberInstrument(member.instrument || "");
+  };
+
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+
+    try {
+      await api.put(`/bands/${id}/members/${editingMember.userId}`, {
+        instrument: editMemberInstrument || null,
+      });
+      setEditingMember(null);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao atualizar função:", err);
+      alert(
+        "Não foi possível guardar a função: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!removingMember) return;
+
+    try {
+      await api.delete(`/bands/${id}/members/${removingMember.userId}`);
+      setRemovingMember(null);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao remover membro:", err);
+      alert(
+        "Não foi possível remover o membro: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handleConfirmLeaveBand = async () => {
+    try {
+      await api.delete(`/bands/${id}/members/me`);
+      setIsLeaveBandModalOpen(false);
+      navigate("/bandas");
+    } catch (err: any) {
+      console.error("Erro ao sair da banda:", err);
+      alert(
+        "Não foi possível sair da banda: " +
           (err.response?.data?.message || err.message || "Erro de servidor."),
       );
     }
@@ -444,12 +570,23 @@ export function BandDetail() {
       <p className="text-slate-400 text-center py-12">Banda não encontrada.</p>
     );
 
-  // Músicas do catálogo que ainda não estão no pool nem nas sugestões desta banda
-  const repertoireSongIds = repertoire.map((r) => r.songId ?? r.song?.id);
-  const suggestionSongIds = suggestions.map((s) => s.id);
+  const isAdmin = band.currentUserRole === "ADMIN";
+
+  // Músicas do teu catálogo que ainda não estão no pool nem nas sugestões desta banda.
+  // A comparação é por título + artista (como no backend), porque a mesma música
+  // pode existir com ids diferentes no catálogo de pessoas diferentes.
+  const normalize = (value?: string | null) =>
+    (value ?? "").trim().toLowerCase();
+  const songKeyOf = (title?: string | null, artist?: string | null) =>
+    `${normalize(title)}|${normalize(artist)}`;
+  const takenSongKeys = new Set([
+    ...repertoire.map((r) =>
+      songKeyOf(r.title ?? r.song?.title, r.artist ?? r.song?.artist),
+    ),
+    ...suggestions.map((s) => songKeyOf(s.title, s.artist)),
+  ]);
   const songsAvailableForSuggestion = globalSongs.filter(
-    (s) =>
-      !repertoireSongIds.includes(s.id) && !suggestionSongIds.includes(s.id),
+    (s) => !takenSongKeys.has(songKeyOf(s.title, s.artist)),
   );
 
   return (
@@ -463,28 +600,135 @@ export function BandDetail() {
           >
             ← Voltar às Bandas
           </button>
-          <h2 className="text-3xl font-bold text-slate-100">{band.name}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold text-slate-100">{band.name}</h2>
+            <span
+              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                isAdmin
+                  ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/40"
+                  : "bg-slate-800 text-slate-400 border-slate-700"
+              }`}
+            >
+              {isAdmin ? "Admin" : "Membro"}
+            </span>
+          </div>
           <p className="text-slate-400 text-sm mt-1">
             {band.description || "Sem descrição"}
           </p>
         </div>
 
-        {/* Botões Editar / Apagar Banda */}
-        <div className="flex space-x-2 pt-1">
-          <button
-            onClick={handleOpenEditBandModal}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
-          >
-            Editar Banda
-          </button>
-          <button
-            onClick={() => setIsDeleteBandModalOpen(true)}
-            className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
-          >
-            Apagar Banda
-          </button>
-        </div>
+        {/* Botões Editar / Apagar Banda (só admin) */}
+        {isAdmin && (
+          <div className="flex space-x-2 pt-1">
+            <button
+              onClick={handleOpenEditBandModal}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+            >
+              Editar Banda
+            </button>
+            <button
+              onClick={() => setIsDeleteBandModalOpen(true)}
+              className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
+            >
+              Apagar Banda
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* MEMBROS */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-bold text-slate-100">Membros</h3>
+            <p className="text-xs text-slate-400">
+              Quem faz parte desta banda e a função de cada um
+            </p>
+          </div>
+          {isAdmin ? (
+            <button
+              onClick={handleOpenAddMember}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition"
+            >
+              + Adicionar Membro
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsLeaveBandModalOpen(true)}
+              className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
+            >
+              Sair da Banda
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {members.map((m) => {
+            const memberIsAdmin = m.role === "ADMIN";
+            return (
+              <div
+                key={m.id}
+                className={`p-4 rounded-xl border flex items-start justify-between ${
+                  memberIsAdmin
+                    ? "bg-indigo-950/30 border-indigo-500/40"
+                    : "bg-slate-900 border-slate-800"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-slate-100 text-sm truncate">
+                      {m.userName}
+                    </span>
+                    {m.currentUser && (
+                      <span className="text-[10px] text-slate-500">(tu)</span>
+                    )}
+                    {memberIsAdmin && (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-500/15 border border-indigo-500/40 text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                        Admin
+                      </span>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">
+                      {m.userEmail}
+                    </p>
+                  )}
+                  <div className="mt-2 text-xs">
+                    {m.instrument ? (
+                      <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-indigo-300">
+                        {m.instrument}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 italic">
+                        Sem função definida
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {isAdmin && (
+                  <div className="flex flex-col items-end space-y-1 pl-2">
+                    <button
+                      onClick={() => handleOpenEditMember(m)}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                    >
+                      Função
+                    </button>
+                    {!memberIsAdmin && (
+                      <button
+                        onClick={() => setRemovingMember(m)}
+                        className="text-xs text-red-400 hover:text-red-300 transition"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* SETLISTS */}
       <section className="space-y-4">
@@ -497,18 +741,22 @@ export function BandDetail() {
               Concertos e alinhamentos específicos criados para esta banda
             </p>
           </div>
-          <button
-            onClick={() => setIsSetlistModalOpen(true)}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition"
-          >
-            + Nova Setlist
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setIsSetlistModalOpen(true)}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition"
+            >
+              + Nova Setlist
+            </button>
+          )}
         </div>
 
         {setlists.length === 0 ? (
           <div className="p-6 border border-dashed border-slate-800 rounded-xl text-center">
             <p className="text-xs text-slate-500">
-              Ainda não criaste nenhuma setlist para esta banda.
+              {isAdmin
+                ? "Ainda não criaste nenhuma setlist para esta banda."
+                : "Esta banda ainda não tem setlists."}
             </p>
           </div>
         ) : (
@@ -525,48 +773,50 @@ export function BandDetail() {
                       {s.name}
                     </h4>
 
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(
-                            openDropdownId === s.id ? null : s.id,
-                          );
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
-                        title="Opções da Setlist"
-                      >
-                        <svg
-                          className="w-4 h-4 fill-current"
-                          viewBox="0 0 24 24"
+                    {isAdmin && (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(
+                              openDropdownId === s.id ? null : s.id,
+                            );
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+                          title="Opções da Setlist"
                         >
-                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-4 h-4 fill-current"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                          </svg>
+                        </button>
 
-                      {openDropdownId === s.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 py-1 text-xs"
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenEditSetlist(s, e)}
-                            className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700/80 transition"
+                        {openDropdownId === s.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 py-1 text-xs"
                           >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenDeleteSetlist(s, e)}
-                            className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-700/80 transition"
-                          >
-                            Apagar
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEditSetlist(s, e)}
+                              className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700/80 transition"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenDeleteSetlist(s, e)}
+                              className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-700/80 transition"
+                            >
+                              Apagar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-400 mt-1 truncate">
@@ -594,15 +844,17 @@ export function BandDetail() {
               Músicas do catálogo global associadas a esta banda
             </p>
           </div>
-          <button
-            onClick={() => {
-              setIsCreatingNewSong(false);
-              setIsRepertoireModalOpen(true);
-            }}
-            className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-xs font-medium rounded-lg transition"
-          >
-            + Adicionar ao Repertório
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setIsCreatingNewSong(false);
+                setIsRepertoireModalOpen(true);
+              }}
+              className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-xs font-medium rounded-lg transition"
+            >
+              + Adicionar ao Repertório
+            </button>
+          )}
         </div>
 
         {repertoire.length === 0 ? (
@@ -621,7 +873,7 @@ export function BandDetail() {
                   <th className="py-3 px-4">Tom</th>
                   <th className="py-3 px-4">BPM</th>
                   <th className="py-3 px-4">Notas</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
+                  {isAdmin && <th className="py-3 px-4 text-right">Ações</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -647,20 +899,22 @@ export function BandDetail() {
                     <td className="py-3 px-4 text-xs text-slate-400 italic">
                       {item.notes || "-"}
                     </td>
-                    <td className="py-3 px-4 text-right space-x-3">
-                      <button
-                        onClick={() => handleOpenEditRepertoire(item)}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 transition"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setDeletingRepertoireItem(item)}
-                        className="text-xs text-red-400 hover:text-red-300 transition"
-                      >
-                        Remover
-                      </button>
-                    </td>
+                    {isAdmin && (
+                      <td className="py-3 px-4 text-right space-x-3">
+                        <button
+                          onClick={() => handleOpenEditRepertoire(item)}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => setDeletingRepertoireItem(item)}
+                          className="text-xs text-red-400 hover:text-red-300 transition"
+                        >
+                          Remover
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -700,40 +954,54 @@ export function BandDetail() {
                 <tr className="bg-slate-800/40 text-slate-400 text-xs uppercase border-b border-slate-800">
                   <th className="py-3 px-4">Música</th>
                   <th className="py-3 px-4">Artista</th>
+                  <th className="py-3 px-4">Sugerida por</th>
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {suggestions.map((song) => (
+                {suggestions.map((suggestion) => (
                   <tr
-                    key={song.id}
+                    key={suggestion.id}
                     className="hover:bg-slate-800/30 transition text-slate-200"
                   >
                     <td className="py-3 px-4 font-semibold text-slate-100">
-                      {song.title}
+                      {suggestion.title}
                     </td>
                     <td className="py-3 px-4 text-slate-400">
-                      {song.artist || "Desconhecido"}
+                      {suggestion.artist || "Desconhecido"}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-400">
+                      {suggestion.addedByName || "—"}
                     </td>
                     <td className="py-3 px-4 text-right space-x-3">
-                      <button
-                        onClick={() => handlePromoteSuggestion(song.id)}
-                        className="text-xs text-emerald-400 hover:text-emerald-300 transition"
-                      >
-                        Promover ao Pool
-                      </button>
-                      <button
-                        onClick={() => handleOpenEditSuggestion(song)}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 transition"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleRemoveSuggestion(song.id)}
-                        className="text-xs text-red-400 hover:text-red-300 transition"
-                      >
-                        Retirar
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() =>
+                            handlePromoteSuggestion(suggestion.songId)
+                          }
+                          className="text-xs text-emerald-400 hover:text-emerald-300 transition"
+                        >
+                          Promover ao Pool
+                        </button>
+                      )}
+                      {suggestion.canEdit && (
+                        <button
+                          onClick={() => handleOpenEditSuggestion(suggestion)}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                        >
+                          Editar
+                        </button>
+                      )}
+                      {suggestion.canRemove && (
+                        <button
+                          onClick={() =>
+                            handleRemoveSuggestion(suggestion.songId)
+                          }
+                          className="text-xs text-red-400 hover:text-red-300 transition"
+                        >
+                          Retirar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -742,6 +1010,179 @@ export function BandDetail() {
           </div>
         )}
       </section>
+
+      {/* Modal Adicionar Membro */}
+      {isAddMemberModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Adicionar Membro
+            </h3>
+            <form onSubmit={handleAddMember} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  E-mail do Utilizador
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="Ex: ana@exemplo.com"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  O utilizador tem de já ter conta no SetWist.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Função (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newMemberInstrument}
+                  onChange={(e) => setNewMemberInstrument(e.target.value)}
+                  placeholder="Ex: Baixo, Voz, Técnico de som"
+                  maxLength={100}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddMemberModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Função do Membro */}
+      {editingMember && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Função de {editingMember.userName}
+            </h3>
+            <form onSubmit={handleUpdateMember} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Função na Banda
+                </label>
+                <input
+                  type="text"
+                  value={editMemberInstrument}
+                  onChange={(e) => setEditMemberInstrument(e.target.value)}
+                  placeholder="Ex: Baixo, Voz, Técnico de som"
+                  maxLength={100}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Texto livre. Deixa vazio para remover a função.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingMember(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Remover Membro */}
+      {removingMember && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">Remover Membro</h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas remover{" "}
+              <span className="font-semibold text-slate-100">
+                "{removingMember.userName}"
+              </span>{" "}
+              da banda?
+            </p>
+            <p className="text-xs text-slate-500">
+              As sugestões que esta pessoa adicionou continuam na lista e passam
+              a ser geridas por ti.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRemovingMember(null)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRemoveMember}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Sim, Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sair da Banda */}
+      {isLeaveBandModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md space-y-4">
+            <h3 className="text-xl font-bold text-slate-100">Sair da Banda</h3>
+            <p className="text-sm text-slate-300">
+              Tens a certeza que desejas sair da banda{" "}
+              <span className="font-semibold text-slate-100">
+                "{band.name}"
+              </span>
+              ?
+            </p>
+            <p className="text-xs text-slate-500">
+              Deixas de ver o repertório e as setlists. Só o administrador te
+              pode voltar a adicionar.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLeaveBandModalOpen(false)}
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLeaveBand}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                Sim, Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Adicionar Sugestão */}
       {isSuggestionModalOpen && (

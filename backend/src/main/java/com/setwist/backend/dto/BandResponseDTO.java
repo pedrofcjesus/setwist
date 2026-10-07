@@ -3,6 +3,7 @@ package com.setwist.backend.dto;
 import java.time.LocalDateTime;
 
 import com.setwist.backend.model.Band;
+import com.setwist.backend.model.BandRole;
 
 public class BandResponseDTO {
 
@@ -11,6 +12,8 @@ public class BandResponseDTO {
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private BandRole currentUserRole;
+    private String currentUserInstrument;
 
     public BandResponseDTO() {
     }
@@ -61,5 +64,21 @@ public class BandResponseDTO {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public BandRole getCurrentUserRole() {
+        return currentUserRole;
+    }
+
+    public void setCurrentUserRole(BandRole currentUserRole) {
+        this.currentUserRole = currentUserRole;
+    }
+
+    public String getCurrentUserInstrument() {
+        return currentUserInstrument;
+    }
+
+    public void setCurrentUserInstrument(String currentUserInstrument) {
+        this.currentUserInstrument = currentUserInstrument;
     }
 }

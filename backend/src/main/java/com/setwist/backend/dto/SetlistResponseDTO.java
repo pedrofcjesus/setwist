@@ -17,6 +17,7 @@ public class SetlistResponseDTO {
     private Integer totalDurationSeconds;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean canEdit;
 
     public SetlistResponseDTO() {
     }
@@ -117,4 +118,11 @@ public class SetlistResponseDTO {
         this.updatedAt = updatedAt;
     }
 
+    public boolean isCanEdit() {
+        return canEdit;
+    }
+
+    public void setCanEdit(boolean canEdit) {
+        this.canEdit = canEdit;
+    }
 }

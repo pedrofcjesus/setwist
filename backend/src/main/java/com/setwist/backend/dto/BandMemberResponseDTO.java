@@ -10,6 +10,8 @@ public class BandMemberResponseDTO {
     private String userName;
     private String userEmail;
     private BandRole role;
+    private String instrument;
+    private boolean currentUser;
 
     public BandMemberResponseDTO() {}
 
@@ -21,6 +23,7 @@ public class BandMemberResponseDTO {
             this.userEmail = member.getUser().getEmail();
         }
         this.role = member.getRole();
+        this.instrument = member.getInstrument();
     }
 
     public Long getId() { return id; }
@@ -37,4 +40,10 @@ public class BandMemberResponseDTO {
 
     public BandRole getRole() { return role; }
     public void setRole(BandRole role) { this.role = role; }
+
+    public String getInstrument() { return instrument; }
+    public void setInstrument(String instrument) { this.instrument = instrument; }
+
+    public boolean isCurrentUser() { return currentUser; }
+    public void setCurrentUser(boolean currentUser) { this.currentUser = currentUser; }
 }

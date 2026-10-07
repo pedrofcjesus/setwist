@@ -1,9 +1,8 @@
 package com.setwist.backend.dto;
 
-import com.setwist.backend.model.BandRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class BandMemberRequestDTO {
 
@@ -11,19 +10,19 @@ public class BandMemberRequestDTO {
     @Email(message = "E-mail inválido")
     private String userEmail;
 
-    @NotNull(message = "A permissão (role) é obrigatória")
-    private BandRole role;
+    @Size(max = 100, message = "A função não pode ter mais de 100 caracteres.")
+    private String instrument;
 
     public BandMemberRequestDTO() {}
 
-    public BandMemberRequestDTO(String userEmail, BandRole role) {
+    public BandMemberRequestDTO(String userEmail, String instrument) {
         this.userEmail = userEmail;
-        this.role = role;
+        this.instrument = instrument;
     }
 
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
 
-    public BandRole getRole() { return role; }
-    public void setRole(BandRole role) { this.role = role; }
+    public String getInstrument() { return instrument; }
+    public void setInstrument(String instrument) { this.instrument = instrument; }
 }

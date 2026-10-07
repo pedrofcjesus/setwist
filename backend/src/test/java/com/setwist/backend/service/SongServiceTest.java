@@ -26,7 +26,7 @@ import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepertoireRepository;
-import com.setwist.backend.repository.BandRepository;
+import com.setwist.backend.repository.BandSuggestionRepository;
 import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
@@ -47,7 +47,7 @@ class SongServiceTest {
     private SetlistSongRepository setlistSongRepository;
 
     @Mock
-    private BandRepository bandRepository;
+    private BandSuggestionRepository bandSuggestionRepository;
 
     @InjectMocks
     private SongService songService;
@@ -87,7 +87,7 @@ class SongServiceTest {
                 .thenReturn(Optional.of(song));
         when(bandRepertoireRepository.findBandNamesBySongId(20L))
                 .thenReturn(List.of("Smoodies"));
-        when(bandRepository.findBandNamesBySuggestedSongId(20L))
+        when(bandSuggestionRepository.findBandNamesBySongId(20L))
                 .thenReturn(List.of("Coffee Break"));
 
         SongResponseDTO result = songService.getSongByIdForUser(20L, "pedro@example.com");
@@ -135,10 +135,10 @@ class SongServiceTest {
 
         songService.deleteSong(20L, "pedro@example.com");
 
-        InOrder order = inOrder(setlistSongRepository, bandRepertoireRepository, bandRepository, songRepository);
+        InOrder order = inOrder(setlistSongRepository, bandRepertoireRepository, bandSuggestionRepository, songRepository);
         order.verify(setlistSongRepository).deleteBySongId(20L);
         order.verify(bandRepertoireRepository).deleteBySongId(20L);
-        order.verify(bandRepository).deleteSuggestionsBySongId(20L);
+        order.verify(bandSuggestionRepository).deleteBySongId(20L);
         order.verify(songRepository).delete(song);
     }
 
@@ -152,6 +152,6 @@ class SongServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(songRepository, never()).delete(any());
-        verify(bandRepository, never()).deleteSuggestionsBySongId(any());
+        verify(bandSuggestionRepository, never()).deleteBySongId(any());
     }
 }

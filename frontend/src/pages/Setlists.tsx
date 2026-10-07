@@ -28,6 +28,7 @@ interface SetlistDetailData {
     id: number;
     name: string;
   };
+  canEdit?: boolean;
   setlistSongs: SongItem[];
 }
 
@@ -336,6 +337,9 @@ export function Setlists() {
     (s) => s.repertoireItem.id,
   );
 
+  // Só o admin da banda edita; os restantes membros só veem
+  const canEdit = setlist.canEdit === true;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -354,21 +358,23 @@ export function Setlists() {
           </p>
         </div>
 
-        {/* Botões Editar / Apagar Setlist */}
-        <div className="flex space-x-2 pt-1">
-          <button
-            onClick={handleOpenEditModal}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
-          >
-            Editar Setlist
-          </button>
-          <button
-            onClick={() => setIsDeleteModalOpen(true)}
-            className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
-          >
-            Apagar
-          </button>
-        </div>
+        {/* Botões Editar / Apagar Setlist (só admin) */}
+        {canEdit && (
+          <div className="flex space-x-2 pt-1">
+            <button
+              onClick={handleOpenEditModal}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition"
+            >
+              Editar Setlist
+            </button>
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/60 text-xs font-medium rounded-lg transition"
+            >
+              Apagar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -378,16 +384,19 @@ export function Setlists() {
             <h3 className="font-semibold text-slate-200">
               Alinhamento ({setlist.setlistSongs.length} músicas)
             </h3>
-            <span className="text-xs text-slate-500 font-mono">
-              Arrasta ou usa as setas para reordenar
-            </span>
+            {canEdit && (
+              <span className="text-xs text-slate-500 font-mono">
+                Arrasta ou usa as setas para reordenar
+              </span>
+            )}
           </div>
 
           {setlist.setlistSongs.length === 0 ? (
             <div className="p-8 border border-dashed border-slate-800 rounded-2xl text-center">
               <p className="text-slate-500 text-sm">
-                A setlist está vazia. Adiciona músicas a partir do repertório à
-                direita!
+                {canEdit
+                  ? "A setlist está vazia. Adiciona músicas a partir do repertório à direita!"
+                  : "A setlist ainda não tem músicas."}
               </p>
             </div>
           ) : (
@@ -408,7 +417,7 @@ export function Setlists() {
                 return (
                   <div
                     key={item.id}
-                    draggable
+                    draggable={canEdit}
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDrop={(e) => handleDrop(e, index)}
@@ -416,7 +425,9 @@ export function Setlists() {
                       setDraggedIndex(null);
                       setDragOverIndex(null);
                     }}
-                    className={`flex items-center justify-between p-4 bg-slate-900 border rounded-xl transition cursor-grab active:cursor-grabbing ${
+                    className={`flex items-center justify-between p-4 bg-slate-900 border rounded-xl transition ${
+                      canEdit ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${
                       isDragging
                         ? "opacity-30 border-indigo-500 border-dashed"
                         : isDragOver
@@ -425,27 +436,33 @@ export function Setlists() {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      {/* Pegadouro / Drag Handle */}
-                      <span className="text-slate-600 hover:text-slate-400 text-sm select-none pr-1">
-                        ⋮⋮
-                      </span>
+                      {canEdit && (
+                        <>
+                          {/* Pegadouro / Drag Handle */}
+                          <span className="text-slate-600 hover:text-slate-400 text-sm select-none pr-1">
+                            ⋮⋮
+                          </span>
 
-                      <div className="flex flex-col space-y-1">
-                        <button
-                          disabled={index === 0}
-                          onClick={() => handleMove(index, "up")}
-                          className="text-xs text-slate-500 hover:text-indigo-400 disabled:opacity-20 transition"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          disabled={index === setlist.setlistSongs.length - 1}
-                          onClick={() => handleMove(index, "down")}
-                          className="text-xs text-slate-500 hover:text-indigo-400 disabled:opacity-20 transition"
-                        >
-                          ▼
-                        </button>
-                      </div>
+                          <div className="flex flex-col space-y-1">
+                            <button
+                              disabled={index === 0}
+                              onClick={() => handleMove(index, "up")}
+                              className="text-xs text-slate-500 hover:text-indigo-400 disabled:opacity-20 transition"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              disabled={
+                                index === setlist.setlistSongs.length - 1
+                              }
+                              onClick={() => handleMove(index, "down")}
+                              className="text-xs text-slate-500 hover:text-indigo-400 disabled:opacity-20 transition"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        </>
+                      )}
 
                       <span className="font-mono text-sm font-bold text-slate-500 w-6">
                         {index + 1}.
@@ -468,13 +485,17 @@ export function Setlists() {
                           ? `${item.repertoireItem.bpm} BPM`
                           : "-"}
                       </span>
-                      <button
-                        onClick={() => handleRemoveSong(item.repertoireItem.id)}
-                        className="p-1 text-slate-500 hover:text-red-400 text-xs transition"
-                        title="Remover da setlist"
-                      >
-                        ✕
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() =>
+                            handleRemoveSong(item.repertoireItem.id)
+                          }
+                          className="p-1 text-slate-500 hover:text-red-400 text-xs transition"
+                          title="Remover da setlist"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -489,15 +510,19 @@ export function Setlists() {
             <div>
               <h3 className="font-semibold text-slate-200">Repertório</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Clica no + para adicionar ao alinhamento
+                {canEdit
+                  ? "Clica no + para adicionar ao alinhamento"
+                  : "Músicas do repertório da banda"}
               </p>
             </div>
-            <button
-              onClick={() => setIsNewSongModalOpen(true)}
-              className="text-xs text-indigo-400 hover:underline font-medium"
-            >
-              + Criar Nova
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => setIsNewSongModalOpen(true)}
+                className="text-xs text-indigo-400 hover:underline font-medium"
+              >
+                + Criar Nova
+              </button>
+            )}
           </div>
 
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
@@ -531,33 +556,35 @@ export function Setlists() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-1.5">
-                      <button
-                        onClick={() => handleOpenEditRepItem(rep)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-400 transition"
-                        title="Editar música"
-                      >
-                        ✎
-                      </button>
-                      <button
-                        onClick={() => setDeletingRepItem(rep)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 transition"
-                        title="Apagar do repertório"
-                      >
-                        🗑
-                      </button>
-                      <button
-                        disabled={isAdded}
-                        onClick={() => handleAddSongToSetlist(rep.id)}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                          isAdded
-                            ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                            : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                        }`}
-                      >
-                        {isAdded ? "Adicionada" : "+"}
-                      </button>
-                    </div>
+                    {canEdit && (
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => handleOpenEditRepItem(rep)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 transition"
+                          title="Editar música"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() => setDeletingRepItem(rep)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 transition"
+                          title="Apagar do repertório"
+                        >
+                          🗑
+                        </button>
+                        <button
+                          disabled={isAdded}
+                          onClick={() => handleAddSongToSetlist(rep.id)}
+                          className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                            isAdded
+                              ? "bg-slate-800 text-slate-600 cursor-not-allowed"
+                              : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                          }`}
+                        >
+                          {isAdded ? "Adicionada" : "+"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })

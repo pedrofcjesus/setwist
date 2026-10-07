@@ -6,6 +6,8 @@ interface Band {
   id: number;
   name: string;
   description: string;
+  currentUserRole: "ADMIN" | "MEMBER";
+  currentUserInstrument?: string | null;
 }
 
 export function Bands() {
@@ -16,6 +18,7 @@ export function Bands() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [instrument, setInstrument] = useState("");
 
   // Menu 3 pontinhos nos cartões
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
@@ -55,9 +58,14 @@ export function Bands() {
   const handleCreateBand = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await api.post("/bands", { name, description });
+      const response = await api.post("/bands", {
+        name,
+        description,
+        instrument: instrument || null,
+      });
       setName("");
       setDescription("");
+      setInstrument("");
       setIsModalOpen(false);
       fetchBands();
       navigate(`/bandas/${response.data.id}`);
@@ -152,55 +160,81 @@ export function Bands() {
                     {band.name}
                   </h3>
 
-                  {/* Menu 3 Pontinhos */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenDropdownId(
-                          openDropdownId === band.id ? null : band.id,
-                        );
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
-                      title="Opções da Banda"
-                    >
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                      </svg>
-                    </button>
-
-                    {openDropdownId === band.id && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 py-1 text-xs"
+                  {/* Menu 3 Pontinhos (só admin) */}
+                  {band.currentUserRole === "ADMIN" && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(
+                            openDropdownId === band.id ? null : band.id,
+                          );
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
+                        title="Opções da Banda"
                       >
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenEdit(band, e)}
-                          className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700/80 transition"
+                        <svg
+                          className="w-4 h-4 fill-current"
+                          viewBox="0 0 24 24"
                         >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenDelete(band, e)}
-                          className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-700/80 transition"
+                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                        </svg>
+                      </button>
+
+                      {openDropdownId === band.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 py-1 text-xs"
                         >
-                          Apagar
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEdit(band, e)}
+                            className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700/80 transition"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenDelete(band, e)}
+                            className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-700/80 transition"
+                          >
+                            Apagar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-slate-400 text-sm line-clamp-2">
                   {band.description || "Sem descrição definida"}
                 </p>
+
+                <div className="mt-3 flex items-center gap-2 flex-wrap text-xs">
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                      band.currentUserRole === "ADMIN"
+                        ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/40"
+                        : "bg-slate-800 text-slate-400 border-slate-700"
+                    }`}
+                  >
+                    {band.currentUserRole === "ADMIN" ? "Admin" : "Membro"}
+                  </span>
+                  {band.currentUserInstrument && (
+                    <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-indigo-300">
+                      {band.currentUserInstrument}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-500">
-                <span>Gerir Repertório & Setlists</span>
+                <span>
+                  {band.currentUserRole === "ADMIN"
+                    ? "Gerir Repertório & Setlists"
+                    : "Ver Repertório & Setlists"}
+                </span>
                 <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">
                   Entrar →
                 </span>
@@ -240,6 +274,19 @@ export function Bands() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ex: Soul, Funk & Pop"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  A Tua Função (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={instrument}
+                  onChange={(e) => setInstrument(e.target.value)}
+                  placeholder="Ex: Baixo, Voz, Teclas"
+                  maxLength={100}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
                 />
               </div>

@@ -11,7 +11,7 @@ import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepertoireRepository;
-import com.setwist.backend.repository.BandRepository;
+import com.setwist.backend.repository.BandSuggestionRepository;
 import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
@@ -23,19 +23,19 @@ public class SongService {
     private final UserRepository userRepository;
     private final BandRepertoireRepository bandRepertoireRepository;
     private final SetlistSongRepository setlistSongRepository;
-    private final BandRepository bandRepository;
+    private final BandSuggestionRepository bandSuggestionRepository;
 
     public SongService(
             SongRepository songRepository,
             UserRepository userRepository,
             BandRepertoireRepository bandRepertoireRepository,
             SetlistSongRepository setlistSongRepository,
-            BandRepository bandRepository) {
+            BandSuggestionRepository bandSuggestionRepository) {
         this.songRepository = songRepository;
         this.userRepository = userRepository;
         this.bandRepertoireRepository = bandRepertoireRepository;
         this.setlistSongRepository = setlistSongRepository;
-        this.bandRepository = bandRepository;
+        this.bandSuggestionRepository = bandSuggestionRepository;
     }
 
     public List<SongResponseDTO> getAllSongsForUser(String userEmail) {
@@ -51,7 +51,7 @@ public class SongService {
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
 
         List<String> bandNames = bandRepertoireRepository.findBandNamesBySongId(song.getId());
-        List<String> suggestedIn = bandRepository.findBandNamesBySuggestedSongId(song.getId());
+        List<String> suggestedIn = bandSuggestionRepository.findBandNamesBySongId(song.getId());
         return new SongResponseDTO(song, bandNames, suggestedIn);
     }
 
@@ -92,7 +92,7 @@ public class SongService {
         bandRepertoireRepository.deleteBySongId(song.getId());
 
         // 3. Apagar das sugestões das bandas
-        bandRepository.deleteSuggestionsBySongId(song.getId());
+        bandSuggestionRepository.deleteBySongId(song.getId());
 
         // 4. Apagar a música do catálogo
         songRepository.delete(song);

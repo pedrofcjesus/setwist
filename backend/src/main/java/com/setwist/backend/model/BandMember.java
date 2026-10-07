@@ -31,9 +31,14 @@ public class BandMember {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // Permissão dentro da banda
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BandRole role = BandRole.VIEWER;
+    private BandRole role = BandRole.MEMBER;
+
+    // Função na banda (texto livre): "Baixo", "Voz", "Técnico de som", ...
+    @Column(length = 100)
+    private String instrument;
 
     public BandMember() {}
 
@@ -41,6 +46,11 @@ public class BandMember {
         this.band = band;
         this.user = user;
         this.role = role;
+    }
+
+    public BandMember(Band band, User user, BandRole role, String instrument) {
+        this(band, user, role);
+        this.instrument = instrument;
     }
 
     // Getters e Setters
@@ -55,4 +65,7 @@ public class BandMember {
 
     public BandRole getRole() { return role; }
     public void setRole(BandRole role) { this.role = role; }
+
+    public String getInstrument() { return instrument; }
+    public void setInstrument(String instrument) { this.instrument = instrument; }
 }

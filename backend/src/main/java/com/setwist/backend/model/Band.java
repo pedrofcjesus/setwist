@@ -17,10 +17,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -58,15 +57,11 @@ public class Band {
     @JsonIgnore
     private List<BandRepertoire> repertoire = new ArrayList<>();
 
-    // Sugestões de músicas para a banda (Tabela de junção band_suggestions)
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "band_suggestions",
-        joinColumns = @JoinColumn(name = "band_id"),
-        inverseJoinColumns = @JoinColumn(name = "song_id")
-    )
+    // Sugestões de músicas para a banda (com autor)
+    @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
     @JsonIgnore
-    private List<Song> suggestions = new ArrayList<>();
+    private List<BandSuggestion> suggestions = new ArrayList<>();
 
     // Setlists da banda
     @OneToMany(mappedBy = "band", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -105,8 +100,8 @@ public class Band {
     public List<BandRepertoire> getRepertoire() { return repertoire; }
     public void setRepertoire(List<BandRepertoire> repertoire) { this.repertoire = repertoire; }
 
-    public List<Song> getSuggestions() { return suggestions; }
-    public void setSuggestions(List<Song> suggestions) { this.suggestions = suggestions; }
+    public List<BandSuggestion> getSuggestions() { return suggestions; }
+    public void setSuggestions(List<BandSuggestion> suggestions) { this.suggestions = suggestions; }
 
     public List<Setlist> getSetlists() { return setlists; }
     public void setSetlists(List<Setlist> setlists) { this.setlists = setlists; }

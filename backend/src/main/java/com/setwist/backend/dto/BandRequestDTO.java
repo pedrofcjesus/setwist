@@ -12,7 +12,10 @@ public class BandRequestDTO {
     @Size(max = 500, message = "A descrição não pode ter mais de 500 caracteres.")
     private String description;
 
-    // Construtor vazio
+    // Função do criador na banda (opcional, só usada ao criar)
+    @Size(max = 100, message = "A função não pode ter mais de 100 caracteres.")
+    private String instrument;
+
     public BandRequestDTO() {
     }
 
@@ -21,7 +24,6 @@ public class BandRequestDTO {
         this.description = description;
     }
 
-    // Getters e Setters
     public String getName() {
         return name;
     }
@@ -36,5 +38,13 @@ public class BandRequestDTO {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getInstrument() {
+        return instrument;
+    }
+
+    public void setInstrument(String instrument) {
+        this.instrument = instrument;
     }
 }

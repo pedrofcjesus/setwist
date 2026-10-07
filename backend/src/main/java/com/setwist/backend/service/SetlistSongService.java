@@ -21,41 +21,44 @@ public class SetlistSongService {
 
     private final SetlistRepository setlistRepository;
     private final BandRepertoireRepository bandRepertoireRepository;
+    private final BandAccessService accessService;
 
-    public SetlistSongService(SetlistRepository setlistRepository, BandRepertoireRepository bandRepertoireRepository) {
+    public SetlistSongService(
+            SetlistRepository setlistRepository,
+            BandRepertoireRepository bandRepertoireRepository,
+            BandAccessService accessService) {
         this.setlistRepository = setlistRepository;
         this.bandRepertoireRepository = bandRepertoireRepository;
+        this.accessService = accessService;
     }
 
     @Transactional
     public SetlistResponseDTO addSongToSetlist(Long setlistId, SetlistSongRequestDTO dto, String userEmail) {
-        Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
+        Setlist setlist = accessService.requireSetlistEdit(setlistId, userEmail);
 
-        BandRepertoire repertoireItem = bandRepertoireRepository.findById(dto.getRepertoireItemId())
-                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", dto.getRepertoireItemId()));
+        BandRepertoire repertoireItem = resolveRepertoireItem(setlist, dto.getRepertoireItemId(), userEmail);
 
         // Evita adicionar o mesmo item de repertório em duplicado na mesma setlist
         boolean exists = setlist.getSetlistSongs().stream()
                 .anyMatch(ss -> ss.getRepertoireItem() != null && ss.getRepertoireItem().getId().equals(repertoireItem.getId()));
 
-        if (!exists) {
-            int position = (dto.getPosition() != null) ? dto.getPosition() : setlist.getSetlistSongs().size() + 1;
-            SetlistSong setlistSong = new SetlistSong(setlist, repertoireItem, position);
-            if (dto.getNotes() != null) {
-                setlistSong.setNotes(dto.getNotes());
-            }
-            setlist.getSetlistSongs().add(setlistSong);
-            setlistRepository.save(setlist);
+        if (exists) {
+            return toDTO(setlist);
         }
 
-        return new SetlistResponseDTO(setlistRepository.findByIdAndUserEmail(setlistId, userEmail).get());
+        int position = (dto.getPosition() != null) ? dto.getPosition() : setlist.getSetlistSongs().size() + 1;
+        SetlistSong setlistSong = new SetlistSong(setlist, repertoireItem, position);
+        if (dto.getNotes() != null) {
+            setlistSong.setNotes(dto.getNotes());
+        }
+        setlist.getSetlistSongs().add(setlistSong);
+
+        return toDTO(setlistRepository.saveAndFlush(setlist));
     }
 
     @Transactional
     public SetlistResponseDTO removeSongFromSetlist(Long setlistId, Long repertoireItemId, String userEmail) {
-        Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
+        Setlist setlist = accessService.requireSetlistEdit(setlistId, userEmail);
 
         setlist.getSetlistSongs().removeIf(ss -> ss.getRepertoireItem() != null && ss.getRepertoireItem().getId().equals(repertoireItemId));
 
@@ -65,14 +68,12 @@ public class SetlistSongService {
             ss.setPosition(pos++);
         }
 
-        Setlist updatedSetlist = setlistRepository.save(setlist);
-        return new SetlistResponseDTO(updatedSetlist);
+        return toDTO(setlistRepository.save(setlist));
     }
 
     @Transactional
     public SetlistResponseDTO reorderSongs(Long setlistId, SetlistSongReorderDTO dto, String userEmail) {
-        Setlist setlist = setlistRepository.findByIdAndUserEmail(setlistId, userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Setlist", "id", setlistId));
+        Setlist setlist = accessService.requireSetlistEdit(setlistId, userEmail);
 
         List<Long> newOrderIds = dto.getSongIds(); // IDs dos itens de repertório na nova ordem
 
@@ -89,13 +90,32 @@ public class SetlistSongService {
             // Ordenação segura contra nulos e compatível com o Hibernate
             setlist.getSetlistSongs().sort(
                 Comparator.comparing(
-                    SetlistSong -> SetlistSong.getPosition(), 
+                    ss -> ss.getPosition(),
                     Comparator.nullsLast(Comparator.naturalOrder())
                 )
             );
         }
 
-        Setlist updatedSetlist = setlistRepository.save(setlist);
-        return new SetlistResponseDTO(updatedSetlist);
+        return toDTO(setlistRepository.save(setlist));
+    }
+
+    // O item tem de pertencer ao repertório da banda da setlist
+    private BandRepertoire resolveRepertoireItem(Setlist setlist, Long repertoireItemId, String userEmail) {
+        if (setlist.getBand() != null) {
+            return bandRepertoireRepository.findByIdAndBandId(repertoireItemId, setlist.getBand().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireItemId));
+        }
+
+        // Setlist pessoal (sem banda): o item tem de ser de uma banda de que o utilizador é membro
+        BandRepertoire item = bandRepertoireRepository.findById(repertoireItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item de Repertório", "id", repertoireItemId));
+        accessService.requireMembership(item.getBand().getId(), userEmail);
+        return item;
+    }
+
+    private SetlistResponseDTO toDTO(Setlist setlist) {
+        SetlistResponseDTO dto = new SetlistResponseDTO(setlist);
+        dto.setCanEdit(true); // quem chega aqui já passou por requireSetlistEdit
+        return dto;
     }
 }
