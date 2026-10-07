@@ -3,15 +3,19 @@ package com.setwist.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,7 +25,9 @@ import com.setwist.backend.dto.SongResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
+import com.setwist.backend.repository.BandRepertoireRepository;
 import com.setwist.backend.repository.BandRepository;
+import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
 
@@ -33,6 +39,12 @@ class SongServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private BandRepertoireRepository bandRepertoireRepository;
+
+    @Mock
+    private SetlistSongRepository setlistSongRepository;
 
     @Mock
     private BandRepository bandRepository;
@@ -69,6 +81,22 @@ class SongServiceTest {
     }
 
     @Test
+    @DisplayName("Deve devolver as bandas do pool e as bandas onde está apenas em sugestões")
+    void getSongByIdForUser_IncludesPoolAndSuggestionBands() {
+        when(songRepository.findByIdAndUserEmail(20L, "pedro@example.com"))
+                .thenReturn(Optional.of(song));
+        when(bandRepertoireRepository.findBandNamesBySongId(20L))
+                .thenReturn(List.of("Smoodies"));
+        when(bandRepository.findBandNamesBySuggestedSongId(20L))
+                .thenReturn(List.of("Coffee Break"));
+
+        SongResponseDTO result = songService.getSongByIdForUser(20L, "pedro@example.com");
+
+        assertThat(result.getBands()).containsExactly("Smoodies");
+        assertThat(result.getSuggestedInBands()).containsExactly("Coffee Break");
+    }
+
+    @Test
     @DisplayName("Deve lançar exceção quando a música pertence a outro utilizador")
     void getSongByIdForUser_NotFoundOrUnauthorized() {
         when(songRepository.findByIdAndUserEmail(20L, "outro@example.com"))
@@ -100,13 +128,30 @@ class SongServiceTest {
     }
 
     @Test
-    @DisplayName("Deve eliminar a música quando o utilizador é o proprietário")
+    @DisplayName("Deve eliminar a música e limpar setlists, pools e sugestões")
     void deleteSong_Success() {
         when(songRepository.findByIdAndUserEmail(20L, "pedro@example.com"))
                 .thenReturn(Optional.of(song));
 
         songService.deleteSong(20L, "pedro@example.com");
 
-        verify(songRepository).delete(song);
+        InOrder order = inOrder(setlistSongRepository, bandRepertoireRepository, bandRepository, songRepository);
+        order.verify(setlistSongRepository).deleteBySongId(20L);
+        order.verify(bandRepertoireRepository).deleteBySongId(20L);
+        order.verify(bandRepository).deleteSuggestionsBySongId(20L);
+        order.verify(songRepository).delete(song);
+    }
+
+    @Test
+    @DisplayName("Não deve eliminar a música de outro utilizador")
+    void deleteSong_Unauthorized() {
+        when(songRepository.findByIdAndUserEmail(20L, "outro@example.com"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> songService.deleteSong(20L, "outro@example.com"))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(songRepository, never()).delete(any());
+        verify(bandRepository, never()).deleteSuggestionsBySongId(any());
     }
 }

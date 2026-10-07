@@ -44,6 +44,7 @@ public class BandRepertoireService {
                 .toList();
     }
 
+    @Transactional
     public BandRepertoireResponseDTO addSongToBandRepertoire(Long bandId, BandRepertoireRequestDTO dto, String userEmail) {
         Band band = bandRepository.findByIdAndUserEmail(bandId, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Banda", "id", bandId));
@@ -55,6 +56,10 @@ public class BandRepertoireService {
         repertoire.setNotes(dto.getNotes());
 
         BandRepertoire saved = bandRepertoireRepository.save(repertoire);
+
+        // Se a música estava nas sugestões da banda, sai das sugestões
+        band.getSuggestions().removeIf(s -> s.getId().equals(song.getId()));
+
         return new BandRepertoireResponseDTO(saved);
     }
 

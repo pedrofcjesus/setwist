@@ -90,6 +90,14 @@ public class BandService {
         Song song = songRepository.findByIdAndUserEmail(songId, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Song", "id", songId));
 
+        // Bloqueia músicas que já estão no pool da banda
+        boolean alreadyInRepertoire = band.getRepertoire().stream()
+                .anyMatch(r -> r.getSong().getId().equals(songId));
+
+        if (alreadyInRepertoire) {
+            throw new IllegalArgumentException("Esta música já está no repertório da banda.");
+        }
+
         if (!band.getSuggestions().contains(song)) {
             band.getSuggestions().add(song);
             bandRepository.save(band);

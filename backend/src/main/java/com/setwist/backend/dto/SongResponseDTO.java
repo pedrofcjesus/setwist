@@ -9,6 +9,7 @@ public class SongResponseDTO {
     private String title;
     private String artist;
     private List<String> bands;
+    private List<String> suggestedInBands;
 
     public SongResponseDTO() {
     }
@@ -24,6 +25,11 @@ public class SongResponseDTO {
         this.title = song.getTitle();
         this.artist = song.getArtist();
         this.bands = bands;
+    }
+
+    public SongResponseDTO(Song song, List<String> bands, List<String> suggestedInBands) {
+        this(song, bands);
+        this.suggestedInBands = suggestedInBands;
     }
 
     public Long getId() {
@@ -56,5 +62,13 @@ public class SongResponseDTO {
 
     public void setBands(List<String> bands) {
         this.bands = bands;
+    }
+
+    public List<String> getSuggestedInBands() {
+        return suggestedInBands;
+    }
+
+    public void setSuggestedInBands(List<String> suggestedInBands) {
+        this.suggestedInBands = suggestedInBands;
     }
 }

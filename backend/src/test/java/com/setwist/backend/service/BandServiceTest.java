@@ -3,6 +3,7 @@ package com.setwist.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,10 +21,11 @@ import com.setwist.backend.dto.BandRequestDTO;
 import com.setwist.backend.dto.BandResponseDTO;
 import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Band;
-import com.setwist.backend.model.BandMember;
+import com.setwist.backend.model.BandRepertoire;
+import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
-import com.setwist.backend.repository.BandMemberRepository;
 import com.setwist.backend.repository.BandRepository;
+import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,16 +35,17 @@ class BandServiceTest {
     private BandRepository bandRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private SongRepository songRepository;
 
     @Mock
-    private BandMemberRepository bandMemberRepository;
+    private UserRepository userRepository;
 
     @InjectMocks
     private BandService bandService;
 
     private User user;
     private Band band;
+    private Song song;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +57,12 @@ class BandServiceTest {
         band.setName("Smoodies");
         band.setDescription("Projeto principal");
         band.setUser(user);
+
+        song = new Song();
+        song.setId(30L);
+        song.setTitle("Superstition");
+        song.setArtist("Stevie Wonder");
+        song.setUser(user);
     }
 
     @Test
@@ -93,8 +102,6 @@ class BandServiceTest {
             return saved;
         });
 
-        when(bandMemberRepository.save(any(BandMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        
         BandResponseDTO result = bandService.createBand(dto, "pedro@example.com");
 
         assertThat(result).isNotNull();
@@ -111,5 +118,58 @@ class BandServiceTest {
         bandService.deleteBand(5L, "pedro@example.com");
 
         verify(bandRepository).delete(band);
+    }
+
+    @Test
+    @DisplayName("Deve adicionar uma música do catálogo às sugestões da banda")
+    void addSuggestionToBand_Success() {
+        when(bandRepository.findByIdAndUserEmail(5L, "pedro@example.com"))
+                .thenReturn(Optional.of(band));
+        when(songRepository.findByIdAndUserEmail(30L, "pedro@example.com"))
+                .thenReturn(Optional.of(song));
+
+        bandService.addSuggestionToBand(5L, 30L, "pedro@example.com");
+
+        assertThat(band.getSuggestions()).containsExactly(song);
+        verify(bandRepository).save(band);
+    }
+
+    @Test
+    @DisplayName("Deve recusar sugerir uma música que já está no pool da banda")
+    void addSuggestionToBand_AlreadyInRepertoire_ThrowsException() {
+        BandRepertoire entry = new BandRepertoire();
+        entry.setBand(band);
+        entry.setSong(song);
+        band.getRepertoire().add(entry);
+
+        when(bandRepository.findByIdAndUserEmail(5L, "pedro@example.com"))
+                .thenReturn(Optional.of(band));
+        when(songRepository.findByIdAndUserEmail(30L, "pedro@example.com"))
+                .thenReturn(Optional.of(song));
+
+        assertThatThrownBy(() -> bandService.addSuggestionToBand(5L, 30L, "pedro@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Esta música já está no repertório da banda.");
+
+        assertThat(band.getSuggestions()).isEmpty();
+        verify(bandRepository, never()).save(any(Band.class));
+    }
+
+    @Test
+    @DisplayName("Deve promover uma sugestão para o pool e retirá-la das sugestões")
+    void promoteSongToRepertoire_MovesSongFromSuggestionsToPool() {
+        band.getSuggestions().add(song);
+
+        when(bandRepository.findByIdAndUserEmail(5L, "pedro@example.com"))
+                .thenReturn(Optional.of(band));
+        when(songRepository.findByIdAndUserEmail(30L, "pedro@example.com"))
+                .thenReturn(Optional.of(song));
+
+        bandService.promoteSongToRepertoire(5L, 30L, "pedro@example.com");
+
+        assertThat(band.getRepertoire()).hasSize(1);
+        assertThat(band.getRepertoire().get(0).getSong()).isEqualTo(song);
+        assertThat(band.getSuggestions()).isEmpty();
+        verify(bandRepository).save(band);
     }
 }

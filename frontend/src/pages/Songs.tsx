@@ -6,6 +6,7 @@ interface Song {
   title: string;
   artist: string;
   bands?: string[];
+  suggestedInBands?: string[];
   bandsCount?: number;
   setlistsCount?: number;
   setlists?: { id: number; name: string }[];
@@ -14,8 +15,10 @@ interface Song {
 interface UsageData {
   bandsCount: number;
   setlistsCount: number;
+  suggestionsCount: number;
   bandsList: string[];
   setlistsList: string[];
+  suggestionsList: string[];
 }
 
 type SortField = "title" | "artist";
@@ -91,7 +94,7 @@ export function Songs() {
     }
   };
 
-  // Abrir modal de remoção e verificar associações (bandas e setlists)
+  // Abrir modal de remoção e verificar associações (bandas, sugestões e setlists)
   const handleOpenDeleteModal = async (song: Song) => {
     setSongToDelete(song);
     setUsageData(null);
@@ -109,6 +112,12 @@ export function Songs() {
             .filter(Boolean)
         : [];
 
+      const suggestionsList: string[] = Array.isArray(data.suggestedInBands)
+        ? data.suggestedInBands
+            .map((b: any) => (typeof b === "string" ? b : b?.name))
+            .filter(Boolean)
+        : [];
+
       const setlists =
         data.setlists || data.setlistSongs?.map((s: any) => s.setlist) || [];
       const setlistsList = setlists
@@ -118,16 +127,20 @@ export function Songs() {
       setUsageData({
         bandsCount: data.bandsCount ?? bandsList.length,
         setlistsCount: data.setlistsCount ?? setlistsList.length,
+        suggestionsCount: suggestionsList.length,
         bandsList,
         setlistsList,
+        suggestionsList,
       });
     } catch (err) {
       console.error("Erro ao verificar utilização da música:", err);
       setUsageData({
         bandsCount: song.bands?.length || song.bandsCount || 0,
         setlistsCount: song.setlistsCount || 0,
+        suggestionsCount: song.suggestedInBands?.length || 0,
         bandsList: song.bands || [],
         setlistsList: song.setlists?.map((s) => s.name) || [],
+        suggestionsList: song.suggestedInBands || [],
       });
     } finally {
       setIsCheckingUsage(false);
@@ -198,6 +211,12 @@ export function Songs() {
       <span className="text-indigo-400 ml-1">↓</span>
     );
   };
+
+  const hasUsage =
+    usageData &&
+    (usageData.bandsCount > 0 ||
+      usageData.setlistsCount > 0 ||
+      usageData.suggestionsCount > 0);
 
   return (
     <div className="space-y-6">
@@ -275,7 +294,7 @@ export function Songs() {
                     </td>
                     <td className="py-3 px-4 text-slate-400">{song.artist}</td>
 
-                    {/* Indicador Visual de Bandas */}
+                    {/* Indicador Visual de Bandas (apenas pool/repertório) */}
                     <td className="py-3 px-4 text-slate-300">
                       {!song.bands || song.bands.length === 0 ? (
                         <span className="text-slate-600 font-medium">-</span>
@@ -380,7 +399,7 @@ export function Songs() {
 
             {isCheckingUsage ? (
               <p className="text-sm text-slate-400 animate-pulse py-2">
-                A verificar associações com bandas e setlists...
+                A verificar associações com bandas, sugestões e setlists...
               </p>
             ) : (
               <>
@@ -396,8 +415,7 @@ export function Songs() {
                   ?
                 </p>
 
-                {usageData &&
-                (usageData.bandsCount > 0 || usageData.setlistsCount > 0) ? (
+                {hasUsage && usageData ? (
                   <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl space-y-2 text-xs text-amber-200">
                     <div className="font-bold flex items-center gap-1.5 text-amber-400">
                       <span>⚠️</span> Aviso de Associação
@@ -406,9 +424,16 @@ export function Songs() {
                     <ul className="list-disc list-inside space-y-1 font-mono text-amber-300/90">
                       {usageData.bandsCount > 0 && (
                         <li>
-                          {usageData.bandsCount} banda(s)
+                          {usageData.bandsCount} pool(s) de banda
                           {usageData.bandsList.length > 0 &&
                             ` (${usageData.bandsList.join(", ")})`}
+                        </li>
+                      )}
+                      {usageData.suggestionsCount > 0 && (
+                        <li>
+                          {usageData.suggestionsCount} lista(s) de sugestões
+                          {usageData.suggestionsList.length > 0 &&
+                            ` (${usageData.suggestionsList.join(", ")})`}
                         </li>
                       )}
                       {usageData.setlistsCount > 0 && (
@@ -421,7 +446,7 @@ export function Songs() {
                     </ul>
                     <p className="pt-1 text-amber-400/80 italic">
                       Ao apagar do catálogo global, ela será também removida
-                      desses repertórios e alinhamentos.
+                      desses pools, sugestões e alinhamentos.
                     </p>
                   </div>
                 ) : (

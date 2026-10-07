@@ -37,6 +37,7 @@ export function BandDetail() {
     description: string;
   } | null>(null);
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
+  const [suggestions, setSuggestions] = useState<Song[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [globalSongs, setGlobalSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,20 @@ export function BandDetail() {
   // Remover Música do Repertório (Modal de Confirmação com Aviso)
   const [deletingRepertoireItem, setDeletingRepertoireItem] =
     useState<RepertoireItem | null>(null);
+
+  // Sugestões: adicionar
+  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+  const [isCreatingNewSuggestion, setIsCreatingNewSuggestion] = useState(false);
+  const [selectedSuggestionSongId, setSelectedSuggestionSongId] = useState<
+    number | ""
+  >("");
+  const [newSuggestionTitle, setNewSuggestionTitle] = useState("");
+  const [newSuggestionArtist, setNewSuggestionArtist] = useState("");
+
+  // Sugestões: editar
+  const [editingSuggestion, setEditingSuggestion] = useState<Song | null>(null);
+  const [editSuggestionTitle, setEditSuggestionTitle] = useState("");
+  const [editSuggestionArtist, setEditSuggestionArtist] = useState("");
 
   // Editar e Apagar Banda
   const [isEditBandModalOpen, setIsEditBandModalOpen] = useState(false);
@@ -92,15 +107,18 @@ export function BandDetail() {
 
   const fetchData = async () => {
     try {
-      const [bandRes, repRes, setlistRes, globalRes] = await Promise.all([
-        api.get(`/bands/${id}`),
-        api.get(`/bands/${id}/repertoire`),
-        api.get(`/setlists`),
-        api.get(`/songs`),
-      ]);
+      const [bandRes, repRes, suggestionsRes, setlistRes, globalRes] =
+        await Promise.all([
+          api.get(`/bands/${id}`),
+          api.get(`/bands/${id}/repertoire`),
+          api.get(`/bands/${id}/suggestions`),
+          api.get(`/setlists`),
+          api.get(`/songs`),
+        ]);
 
       setBand(bandRes.data);
       setRepertoire(repRes.data);
+      setSuggestions(suggestionsRes.data);
       setSetlists(
         setlistRes.data.filter((s: any) => s.band?.id === Number(id)),
       );
@@ -259,6 +277,102 @@ export function BandDetail() {
     }
   };
 
+  // --- SUGESTÕES ---
+
+  const handleOpenSuggestionModal = () => {
+    setIsCreatingNewSuggestion(false);
+    setSelectedSuggestionSongId("");
+    setNewSuggestionTitle("");
+    setNewSuggestionArtist("");
+    setIsSuggestionModalOpen(true);
+  };
+
+  const handleAddSuggestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      let targetSongId = selectedSuggestionSongId;
+
+      if (isCreatingNewSuggestion) {
+        if (!newSuggestionTitle) return;
+        const songRes = await api.post("/songs", {
+          title: newSuggestionTitle,
+          artist: newSuggestionArtist || "Desconhecido",
+        });
+        targetSongId = songRes.data.id;
+      }
+
+      if (!targetSongId) return;
+
+      await api.post(`/bands/${id}/suggestions/${Number(targetSongId)}`);
+
+      setSelectedSuggestionSongId("");
+      setNewSuggestionTitle("");
+      setNewSuggestionArtist("");
+      setIsCreatingNewSuggestion(false);
+      setIsSuggestionModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao adicionar sugestão:", err);
+      alert(
+        "Não foi possível adicionar a sugestão: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handleOpenEditSuggestion = (song: Song) => {
+    setEditingSuggestion(song);
+    setEditSuggestionTitle(song.title);
+    setEditSuggestionArtist(song.artist || "");
+  };
+
+  const handleUpdateSuggestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSuggestion || !editSuggestionTitle) return;
+
+    try {
+      await api.put(`/songs/${editingSuggestion.id}`, {
+        title: editSuggestionTitle,
+        artist: editSuggestionArtist || "Desconhecido",
+      });
+      setEditingSuggestion(null);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao atualizar sugestão:", err);
+      alert(
+        "Não foi possível guardar as alterações: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handleRemoveSuggestion = async (songId: number) => {
+    try {
+      await api.delete(`/bands/${id}/suggestions/${songId}`);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao retirar sugestão:", err);
+      alert(
+        "Não foi possível retirar a sugestão: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
+  const handlePromoteSuggestion = async (songId: number) => {
+    try {
+      await api.post(`/bands/${id}/repertoire/${songId}`);
+      fetchData();
+    } catch (err: any) {
+      console.error("Erro ao promover sugestão:", err);
+      alert(
+        "Não foi possível promover a música: " +
+          (err.response?.data?.message || err.message || "Erro de servidor."),
+      );
+    }
+  };
+
   const handleCreateSetlist = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -329,6 +443,14 @@ export function BandDetail() {
     return (
       <p className="text-slate-400 text-center py-12">Banda não encontrada.</p>
     );
+
+  // Músicas do catálogo que ainda não estão no pool nem nas sugestões desta banda
+  const repertoireSongIds = repertoire.map((r) => r.songId ?? r.song?.id);
+  const suggestionSongIds = suggestions.map((s) => s.id);
+  const songsAvailableForSuggestion = globalSongs.filter(
+    (s) =>
+      !repertoireSongIds.includes(s.id) && !suggestionSongIds.includes(s.id),
+  );
 
   return (
     <div className="space-y-10">
@@ -546,6 +668,239 @@ export function BandDetail() {
           </div>
         )}
       </section>
+
+      {/* SUGESTÕES */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-center border-t border-slate-800 pt-8">
+          <div>
+            <h3 className="text-xl font-bold text-slate-100">Sugestões</h3>
+            <p className="text-xs text-slate-400">
+              Músicas a considerar para esta banda. Promove para o pool quando
+              forem aprovadas
+            </p>
+          </div>
+          <button
+            onClick={handleOpenSuggestionModal}
+            className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-xs font-medium rounded-lg transition"
+          >
+            + Adicionar Sugestão
+          </button>
+        </div>
+
+        {suggestions.length === 0 ? (
+          <div className="p-6 border border-dashed border-slate-800 rounded-xl text-center">
+            <p className="text-xs text-slate-500">
+              Esta banda ainda não tem sugestões de músicas.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="bg-slate-800/40 text-slate-400 text-xs uppercase border-b border-slate-800">
+                  <th className="py-3 px-4">Música</th>
+                  <th className="py-3 px-4">Artista</th>
+                  <th className="py-3 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {suggestions.map((song) => (
+                  <tr
+                    key={song.id}
+                    className="hover:bg-slate-800/30 transition text-slate-200"
+                  >
+                    <td className="py-3 px-4 font-semibold text-slate-100">
+                      {song.title}
+                    </td>
+                    <td className="py-3 px-4 text-slate-400">
+                      {song.artist || "Desconhecido"}
+                    </td>
+                    <td className="py-3 px-4 text-right space-x-3">
+                      <button
+                        onClick={() => handlePromoteSuggestion(song.id)}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 transition"
+                      >
+                        Promover ao Pool
+                      </button>
+                      <button
+                        onClick={() => handleOpenEditSuggestion(song)}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleRemoveSuggestion(song.id)}
+                        className="text-xs text-red-400 hover:text-red-300 transition"
+                      >
+                        Retirar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Modal Adicionar Sugestão */}
+      {isSuggestionModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-100">
+                Adicionar Sugestão
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  setIsCreatingNewSuggestion(!isCreatingNewSuggestion)
+                }
+                className="text-xs text-indigo-400 hover:underline"
+              >
+                {isCreatingNewSuggestion
+                  ? "← Escolher Existente"
+                  : "+ Criar Nova Música"}
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSuggestion} className="space-y-4">
+              {isCreatingNewSuggestion ? (
+                <>
+                  <p className="text-xs text-slate-400">
+                    A música será também adicionada ao catálogo geral.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                      Título da Nova Música
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newSuggestionTitle}
+                      onChange={(e) => setNewSuggestionTitle(e.target.value)}
+                      placeholder="Ex: Superstition"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                      Artista / Banda
+                    </label>
+                    <input
+                      type="text"
+                      value={newSuggestionArtist}
+                      onChange={(e) => setNewSuggestionArtist(e.target.value)}
+                      placeholder="Ex: Stevie Wonder"
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                    Música do Catálogo
+                  </label>
+                  <select
+                    required
+                    value={selectedSuggestionSongId}
+                    onChange={(e) =>
+                      setSelectedSuggestionSongId(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                  >
+                    <option value="">Seleciona uma música...</option>
+                    {songsAvailableForSuggestion.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title} - {s.artist}
+                      </option>
+                    ))}
+                  </select>
+                  {songsAvailableForSuggestion.length === 0 && (
+                    <p className="text-xs text-slate-500 mt-2">
+                      Todas as músicas do catálogo já estão no pool ou nas
+                      sugestões desta banda.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSuggestionModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  {isCreatingNewSuggestion ? "Criar & Sugerir" : "Adicionar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Sugestão */}
+      {editingSuggestion && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md">
+            <h3 className="text-xl font-bold text-slate-100 mb-4">
+              Editar Sugestão
+            </h3>
+            <form onSubmit={handleUpdateSuggestion} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Título da Música (Global)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editSuggestionTitle}
+                  onChange={(e) => setEditSuggestionTitle(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">
+                  Artista / Banda (Global)
+                </label>
+                <input
+                  type="text"
+                  value={editSuggestionArtist}
+                  onChange={(e) => setEditSuggestionArtist(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-indigo-500 text-sm"
+                />
+              </div>
+              <p className="text-xs text-slate-500">
+                Estes dados são do catálogo geral: a alteração aplica-se em
+                todas as bandas onde a música aparece.
+              </p>
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingSuggestion(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  Guardar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Editar Música do Repertório */}
       {editingRepertoireItem && (

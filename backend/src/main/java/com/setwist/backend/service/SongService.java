@@ -11,6 +11,7 @@ import com.setwist.backend.exception.ResourceNotFoundException;
 import com.setwist.backend.model.Song;
 import com.setwist.backend.model.User;
 import com.setwist.backend.repository.BandRepertoireRepository;
+import com.setwist.backend.repository.BandRepository;
 import com.setwist.backend.repository.SetlistSongRepository;
 import com.setwist.backend.repository.SongRepository;
 import com.setwist.backend.repository.UserRepository;
@@ -22,16 +23,19 @@ public class SongService {
     private final UserRepository userRepository;
     private final BandRepertoireRepository bandRepertoireRepository;
     private final SetlistSongRepository setlistSongRepository;
+    private final BandRepository bandRepository;
 
     public SongService(
             SongRepository songRepository,
             UserRepository userRepository,
             BandRepertoireRepository bandRepertoireRepository,
-            SetlistSongRepository setlistSongRepository) {
+            SetlistSongRepository setlistSongRepository,
+            BandRepository bandRepository) {
         this.songRepository = songRepository;
         this.userRepository = userRepository;
         this.bandRepertoireRepository = bandRepertoireRepository;
         this.setlistSongRepository = setlistSongRepository;
+        this.bandRepository = bandRepository;
     }
 
     public List<SongResponseDTO> getAllSongsForUser(String userEmail) {
@@ -41,10 +45,14 @@ public class SongService {
                 .toList();
     }
 
+    // Detalhe: inclui também as bandas onde a música está apenas em sugestões (usado no aviso de remoção)
     public SongResponseDTO getSongByIdForUser(Long id, String userEmail) {
         Song song = songRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Música", "id", id));
-        return mapToDTO(song);
+
+        List<String> bandNames = bandRepertoireRepository.findBandNamesBySongId(song.getId());
+        List<String> suggestedIn = bandRepository.findBandNamesBySuggestedSongId(song.getId());
+        return new SongResponseDTO(song, bandNames, suggestedIn);
     }
 
     public SongResponseDTO createSong(SongRequestDTO dto, String userEmail) {
@@ -71,7 +79,6 @@ public class SongService {
         return mapToDTO(updatedSong);
     }
 
-
     @Transactional
     public void deleteSong(Long id, String userEmail) {
         // Valida se a música existe e pertence ao utilizador autenticado
@@ -84,7 +91,10 @@ public class SongService {
         // 2. Apagar do repertório das bandas
         bandRepertoireRepository.deleteBySongId(song.getId());
 
-        // 3. Apagar a música do catálogo
+        // 3. Apagar das sugestões das bandas
+        bandRepository.deleteSuggestionsBySongId(song.getId());
+
+        // 4. Apagar a música do catálogo
         songRepository.delete(song);
     }
 
